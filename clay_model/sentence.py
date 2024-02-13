@@ -37,10 +37,34 @@ class Control_parser:
     def resolve(self):
         pass
 
-    def resolve_if(self,code:str):
+    # クォーテーションをまとめる
+    def resolve_quatation(strlist:list[str]) -> list[str]:
+        depth:int = 0
+        escape_flag:bool = False
+        rlist:list = list()
+        group:list = list()
+        for i in strlist:
+            if escape_flag:
+                group.append(i)
+                escape_flag = False
+            else:
+                if i =='"':
+                    depth+=1
+                    if depth > 0:
+                        pass
+                    elif depth == 0:
+                        pass
+                    else:
+                        pass
+
+        return rlist
+
+    # ブロックごとにまとめる
+    def resolve_block():
         pass
 
-    def resolve_block():
+    # ブロック
+    def resolve_sq_bracket():
         pass
 
 
