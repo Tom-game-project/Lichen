@@ -9,7 +9,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class Control(Enum):
-
     IF   = auto()
     ELIF = auto()
     ELSE = auto()
@@ -17,8 +16,7 @@ class Control(Enum):
     WHILE = auto()
     LOOP = auto()
     FOR = auto()
-    def __init__(self) -> None:
-        pass
+
 
 class Control_parser:
     def __init__(self, code:str) -> None:
@@ -33,13 +31,14 @@ class Control_parser:
 
         self.DOUBLEQUOTATION = '"'
         self.SINGLEQUOTATION = '\''
+        self.ESCAPESTRING = "\\"
 
     def resolve(self):
         pass
 
     # クォーテーションをまとめる
-    def resolve_quatation(strlist:list[str]) -> list[str]:
-        depth:int = 0
+    def resolve_quatation(self,strlist:list[str],quo_char) -> list[str]:
+        open_flag:bool = False
         escape_flag:bool = False
         rlist:list = list()
         group:list = list()
@@ -48,20 +47,61 @@ class Control_parser:
                 group.append(i)
                 escape_flag = False
             else:
-                if i =='"':
-                    depth+=1
-                    if depth > 0:
-                        pass
-                    elif depth == 0:
-                        pass
+                if i == quo_char:
+                    if open_flag:
+                        group.append(i)
+                        rlist.append("".join(group))
+                        group.clear()
+                        open_flag = False
                     else:
-                        pass
-
+                        group.append(i)
+                        open_flag = True
+                else:
+                    if open_flag:
+                        if i == self.ESCAPESTRING:
+                            escape_flag = True
+                        else:
+                            escape_flag = False
+                        group.append(i)
+                    else:
+                        rlist.append(i)
         return rlist
 
     # ブロックごとにまとめる
-    def resolve_block():
-        pass
+    def resolve_block(self,strlist:list[str]) -> list[str]:
+        depth:int = 0
+        rlist:list = list()
+        group:list = list()
+        for i in strlist:
+            if i == self.OPENBRACE:
+                if depth>0:
+                    group.append(i)
+                elif depth == 0:
+                    group.append(i)
+                else:
+                    print("Error!")
+                    return
+                depth += 1
+            elif i== self.CLOSEBRACE:
+                depth -= 1
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    group.append(i)
+                    rlist.append("".join(group))
+                    group.clear()
+                else:
+                    print("Error!")
+                    return
+            else:
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    rlist.append(i)
+                else:
+                    print("Error!")
+                    return 
+        return rlist
 
     # ブロック
     def resolve_sq_bracket():
@@ -111,6 +151,39 @@ def __test_00():
     }
     s"""
 
+def __test_01():
+    """
+    # single or double quotation test
+    """
+    a = Control_parser("hello")
+    code = """
+let code : String = "\\"hello\\"";
+let code : String = "hello 
+
+world";
+"""
+    print (
+        a.resolve_quatation(code,a.DOUBLEQUOTATION)
+    )
+
+def __test_02():
+    """
+    # brace test
+    """
+    a = Control_parser("")
+    code = """
+fn main (void)
+{
+if (){
+    print("hello world")
+}
+}
+"""
+    codelist = a.resolve_quatation(code,a.DOUBLEQUOTATION)
+    codelist = a.resolve_block(codelist)
+    for i,j in enumerate(codelist):
+        print(i,j)
+
 
 if __name__=="__main__":
-    __test_00()
+    __test_02()
