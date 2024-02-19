@@ -1,0 +1,20 @@
+pub fn fizzbazz(num:i32):void
+{
+	if num % 15 == 0
+	{
+		print("fizzbazz");
+	}
+	elif num % 3 == 0
+	{
+		print("fizz");
+	}
+	elif num % 5 == 0
+	{
+		print("bazz");
+	}
+	else
+	{
+		print(num)
+	}
+}
+

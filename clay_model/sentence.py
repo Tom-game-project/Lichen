@@ -141,14 +141,33 @@ class Control_parser:
         """
         if , elif , for , while の四つの文法のうちいずれかに関して解決する
         ここでは、上の4つの文法のうちいずれかを発見する、そして、文法文字列と、ブロック間に存在する式をまとめる
+        最終的にはKMPなどを使用して線形時間内での探索を可能にしたい
         """
         size = len(strlist)
+        syntax_string_length = len(syntax_string)
         group:list = list()
         rlist:list = list()
+        depth = 0
 
-        for index,(elem_type_tag,i) in enumerate(strlist[:size - len(syntax_string)]):
-            pass
-        return rlist
+        for index,(elem_type_tag,i) in enumerate(strlist[:size - syntax_string_length]):
+            print(index,elem_type_tag,i)
+
+            is_if = syntax_string == "".join(
+                map(
+                    lambda a:a[1],
+                    strlist[index:index + syntax_string_length]
+                    )
+                )
+            all_undef = all(
+                map(
+                    lambda a:a[0] == Object_tag.UNDEF,
+                    strlist[index:index + syntax_string_length]
+                    )
+                )
+
+            if is_if and all_undef:
+                pass
+        # return rlist
 
 
 class Control_parse_tree:
@@ -157,9 +176,13 @@ class Control_parse_tree:
 
 class parse_element:
     # tree状になったparseオブジェクト
-    def __init__(self,type_:str,contents:str):
+    def __init__(self,type_:Object_tag,contents:str):
         self.type_ = type_
         self.contents = contents
+
+    @classmethod
+    def new(cls,type_:Object_tag,contents:"parse_element") -> "parse_element":
+        return parse_element(type_,contents)
 
     def get_type(self):
         return self.type_
@@ -244,12 +267,20 @@ fn main (void){
         print(str(i).rjust(2),j)
 
 def __test_03():
+    a = Control_parser("")
     code = """
-if string == "{"{
+list = ["hello","world"];
+if if string == "{"{
     print("hello world")
 }
 """
+    codelist = a.resolve_quatation(code,a.DOUBLEQUOTATION)
+    codelist = a.resolve_block(codelist,a.OPENSQUAREBRACKET,a.CLOSESQUAREBRACKET,Object_tag.SQBLOCK)
+    codelist = a.resolve_block(codelist,a.OPENBRACE,a.CLOSEBRACE,Object_tag.BLOCK)
+    # codelist = a.resolve_iewf(codelist,"if ")
+    for i,j in enumerate(codelist):
+        print(str(i).rjust(2),j)
 
 
 if __name__=="__main__":
-    __test_02()
+    __test_03()
