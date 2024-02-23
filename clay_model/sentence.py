@@ -14,26 +14,21 @@ class Object_tag(Enum):
     """
     # 未定義
     UNDEF = auto()
-
     # 文字列
     STRING = auto()    # a-zA-Z
-
     # block
     SQBLOCK = auto()   # []
     PARENBLOCK = auto()# ()
     BLOCK = auto()     # {}
-
     # 式
     EXPR = auto()
-
     # 制御文法
     CONTROL = auto()
-
     # 単語
     WORD = auto()
 
 
-class Control_parser:
+class Proc_parser:
     def __init__(self, code:str) -> None:
         self.code = code
         
@@ -51,28 +46,12 @@ class Control_parser:
         self.SINGLEQUOTATION = '\''
         self.ESCAPESTRING = "\\"
 
-        # # if, elif, else
-        # self.if_string = "if"
-        # self.elif_string = "elif"
-        # self.else_string = "else"
-
-        # # loop,while,for
-        # self.loop_string = "loop"
-        # self.while_string = "while"
-        # self.for_string = "for"
-
     def resolve0(self,code:str) -> list["parse_element"]:
         codelist = self.resolve_quatation(code,self.DOUBLEQUOTATION)
         return codelist
 
-    def resolve1(self,codelist:list["parse_element"]):
-        codelist = self.resolve_block(codelist,self.OPENSQUAREBRACKET,self.CLOSESQUAREBRACKET,     Object_tag.SQBLOCK) # []
-        codelist = self.resolve_block(codelist,        self.OPENPAREN,        self.CLOSEPAREN,  Object_tag.PARENBLOCK) # ()
-        codelist = self.resolve_block(codelist,        self.OPENBRACE,        self.CLOSEBRACE,       Object_tag.BLOCK) # {}
-        print(codelist)
-        print("="*40)
-        codelist = self.grouping_word(codelist,["\t","\n"," "],["if","elif","else","white","loop"])
-        #codelist = self.grouping_control_syntax0(codelist,["if","elif","else","white","loop"])
+    def resolve1(self,codelist:list["parse_element"]) -> list["parse_element"]:
+        codelist = self.resolve_block(codelist) # {}
         return codelist
 
     def resolve2(self,codelist:list["parse_element"]):
@@ -84,64 +63,71 @@ class Control_parser:
         escape_flag:bool = False
         rlist:list = list()
         group:list = list()
-        for i in strlist:
+        newline_counter :int = 0
+        column_counter:int = 0
+        for inner in strlist:
+            if inner == "\n":
+                column_counter = 0
+                newline_counter += 1
+            else:
+                column_counter += 1
+
             if escape_flag:
-                group.append(i)
+                group.append(inner)
                 escape_flag = False
             else:
-                if i == quo_char:
+                if inner == quo_char:
                     if open_flag:
                         #group.append(i)
-                        rlist.append(parse_element.new(Object_tag.STRING,None,None,"".join(group)))
+                        rlist.append(
+                            parse_element.new(Object_tag.STRING,None,None,"".join(group),position,len(group))
+                        )
                         group.clear()
                         open_flag = False
                     else:
                         #group.append(i)
+                        position = (newline_counter,column_counter)
                         open_flag = True
                 else:
                     if open_flag:
-                        if i == self.ESCAPESTRING:
+                        if inner == self.ESCAPESTRING:
                             escape_flag = True
                         else:
                             escape_flag = False
-                        group.append(i)
+                        group.append(inner)
                     else:
-                        rlist.append(parse_element.new(Object_tag.UNDEF,None,None,i)) # undefのときはそのまま
+                        rlist.append(parse_element.new(Object_tag.UNDEF,None,None,inner,(newline_counter,column_counter),1)) # undefのときはそのまま
         return rlist
 
     # ブロックごとにまとめる
-    def resolve_block(self,strlist:list["parse_element"],open_block_char:str,close_block_char:str,object_tag:Object_tag) -> list["parse_element"]:
+    def resolve_block(self,strlist:list["parse_element"]) -> list["parse_element"]:
         depth:int = 0
         rlist:list = list()
         group:list = list()
         for par_elem in strlist:
-            i = par_elem.contents
+            inner = par_elem.contents
             elem_type_tag = par_elem.get_type
-            if elem_type_tag is Object_tag.UNDEF and i == open_block_char:
+            
+            if elem_type_tag is Object_tag.UNDEF and inner == "{":
                 if depth>0:
                     group.append(par_elem)
                 elif depth == 0:
                     #group.append(i)
+                    position = par_elem.position
                     pass
                 else:
                     print("Error!")
                     return
                 depth += 1
-            elif elem_type_tag is Object_tag.UNDEF and i == close_block_char:
+            elif elem_type_tag is Object_tag.UNDEF and inner == "}":
                 depth -= 1
                 if depth > 0:
                     group.append(par_elem)
                 elif depth == 0:
                     #group.append(i)
-                    if object_tag is Object_tag.SQBLOCK:
-                        rlist.append(parse_element.new(object_tag, None, list(group), None)) # 不明な挙動
-                    elif object_tag is Object_tag.PARENBLOCK:
-                        rlist.append(parse_element.new(object_tag, None, list(group), None)) # 不明な挙動
-                    elif object_tag is Object_tag.BLOCK:                                     # Object_tag.
-                        rlist.append(parse_element.new(object_tag, None, None, self.resolve1(group)))
-                    else:
-                        print("Error!")
-                        return 
+                    contents = self.resolve1(group)
+                    contents_length = sum(map(lambda a:a.length,contents))
+                    rlist.append(parse_element(Object_tag.BLOCK,None,None,contents,position,contents_length + 2))
                     group.clear()
                 else:
                     print("Error!")
@@ -154,7 +140,16 @@ class Control_parser:
                 else:
                     print("Error!")
                     return 
-        
+        return rlist
+
+    def resolve_block2(self,strlist:list["parse_element"]):
+        group = list()
+        rlist = list()
+
+        for par_elem in strlist:
+            if par_elem.get_type is Object_tag.UNDEF :
+                pass
+
         return rlist
 
     def grouping_word(self,strlist:list["parse_element"], split_str:str, control_str:str) -> list["parse_element"]:
@@ -168,36 +163,17 @@ class Control_parser:
         rlist:list = list()
         group:list = list()
         expr_flag:bool = False
-        pre_word_is_not_contlol:bool = True
 
         for par_elem in strlist:
-
             # strlistはすでに、文字列ブロックへとグループされている
             if par_elem.get_type is Object_tag.UNDEF: # タイプが未定義であった場合
                 if par_elem.contents in split_str: # 区切り文字であった場合
                     if group:                     # もし単語グループがあれば
                         word = "".join(group)
-                        pre_word_is_not_contlol = word not in control_str
                         rlist.append(parse_element.new(Object_tag.WORD,word, None, None))
                         group.clear()
                     else:                         # なければ
                         rlist.append(par_elem)
-                # elif par_elem.contents == "=" and not expr_flag:    # "="を見つけたとき、直後に見つけた単語が制御文字でなければ("=="をカウントしてしまう可能性をなくす)
-                #     if group:                     # 単語グループがあれば
-                #         word = "".join(group)
-                #         pre_word_is_not_contlol = word not in control_str
-                #         print(word)
-                #         rlist.append(parse_element.new( Object_tag.WORD, word, None, None))
-                #         group.clear()
-                #     else:                         # なければ
-                #         rlist.append(par_elem)
-                #     expr_flag = True
-                elif par_elem.contents == ";": # ";"を見つけたとき、そして、式フラグが立っているとき
-                    if group:                                # 式グループがあれば
-                        rlist.append(parse_element.new( Object_tag.WORD, None, "".join(group), None))
-                        group.clear()
-                    rlist.append(par_elem)
-                    expr_flag = False
                 else:                             # 上のいずれも当てはまらない場合
                     group.append(par_elem.contents)
             elif par_elem.get_type is Object_tag.BLOCK: # ブロックである場合
@@ -206,10 +182,8 @@ class Control_parser:
                     rlist.append( parse_element.new(Object_tag.WORD, word, None, None))
                     group.clear()
                 rlist.append(par_elem)
-                pre_word_is_not_contlol = True
             else:                                       # グループでも未定義でもない場合
                 rlist.append(par_elem)
-                pre_word_is_not_contlol = True
         return rlist
 
     def grouping_control_syntax0(self, strlist:list["parse_element"], syntax_strings:list[str]) -> list["parse_element"]:
@@ -259,31 +233,34 @@ class Control_parser:
 
     def resolve_control_syntax(self, strlist:list["parse_element"], syntax_string:list[str]) -> list["parse_element"]:
         # resolve_iewfの新しいバージョン
-        grouped_strlist = self.grouping_control_syntax(strlist,syntax_string) # とりあえずまとめる
+        grouped_strlist = self.grouping_control_syntax0(strlist,syntax_string) # とりあえずまとめる
+
 
 class parse_element:
     # tree状になったparseオブジェクト
-    def __init__(self,type_:Object_tag,word:str,expr:"parse_element",contents:"parse_element"):
+    def __init__(self,type_:Object_tag,word:str,expr:"parse_element",contents:"parse_element",position:tuple[int,int],length:int):
+        # position (ln,col)
         self.type_ = type_
         self.word = word
         self.expr = expr
         self.contents = contents
+        self.position = position
+        self.length = length
 
     @classmethod
-    def new(cls,type_:Object_tag,word:str,expr:str,contents:"parse_element") -> "parse_element":
-        return parse_element(type_,word,expr,contents)
+    def new(cls,type_:Object_tag,word:str,expr:str,contents:"parse_element",position:tuple[int,int],length:int) -> "parse_element":
+        return parse_element(type_,word,expr,contents,position,length)
 
     @property
     def get_type(self):
         return self.type_
 
     def __repr__(self) -> str:
-        return f"type ({self.type_}) expr ({self.expr}) word ({self.word}) contents ({self.contents})\n"
+        return f"type ({self.type_}) expr ({self.expr}) word ({self.word}) contents ({self.contents}) (Ln: {self.position[0]},col: {self.position[1]})\n"
 
 #test
 
 def __test_00():
-
     code_sample_00:str = """
     fn fizzbazz(a:i32):void{
         if a % 15 == 0{
@@ -322,7 +299,7 @@ def __test_01():
     """
     # single or double quotation test
     """
-    a = Control_parser("hello")
+    a = Proc_parser("hello")
     code = """
 let code : String = "\\"hello\\"";
 let code : String = "hello 
@@ -337,7 +314,7 @@ def __test_02():
     """
     # brace test
     """
-    a = Control_parser("")
+    a = Proc_parser("")
     code = """
 a[0:5]
 {hello world}
@@ -359,27 +336,30 @@ fn main (void){
         print(str(i).rjust(2),j)
 
 def __test_03():
-    a = Control_parser("")
+    a = Proc_parser("")
     code = """
-fn add(a:i32,b:i32){
-return a+b;
-}
-fn main ():int{
 const list = ["hello","world"];
 const string = "world";
-for i in list{
-const flag = string==i;
-if if flag {1} else {0}{
-const a = "hello" + "world";
-print("hello" + "world");
+
+fn add(a:i32,b:i32){
+    return a+b;
+}
+
+fn main ():int{
+    for i in list{
+        const flag = string==i;
+        if if flag {1} else {0}{
+            const a = "hello" + "world";
+        print("hello" + "world");
 }}}
 """
     codelist = a.resolve0(code)
     codelist = a.resolve1(codelist)
-    print(list(filter(lambda a:not (a.get_type is Object_tag.UNDEF or a.contents==" "),codelist)))
+    print(list(map(lambda b:"<BLOCK>" if b.get_type is Object_tag.BLOCK else b,codelist)))
+    #print(codelist)
 
 def __test_04():
-    a = Control_parser("")
+    a = Proc_parser("")
     code = """
 const list = [[1,1,1],[0,0,0],[1,1,1]];
 const string = "world";
