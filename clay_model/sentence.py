@@ -1,4 +1,5 @@
 from enum import Enum,auto
+from abc import ABCMeta,abstractmethod
 
 # debug tools
 from pprint import pprint
@@ -79,7 +80,7 @@ class Expr_parser:
                     if open_flag:
                         group.append(inner)
                         rlist.append(
-                            "".join(group)
+                            String.new(None,"".join(group))
                         )
                         group.clear()
                         open_flag = False
@@ -98,11 +99,109 @@ class Expr_parser:
                         rlist.append(inner)
         return rlist
 
-    def grouping_brackets(self,vec:str) -> list[str]:
+    def grouping_brackets(self,vec:list) -> list[str]:
         rlist:list[str] = list()
         group:list[str] = list()
+        depth:int = 0
+
         for i in vec:
-            pass
+            if i == '{':
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    pass
+                else:
+                    print("Error!")
+                    return
+                depth += 1
+            elif i == '}':
+                depth -= 1
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    rlist.append(Block.new(None,copy.copy(group)))
+                    group.clear()
+                else:
+                    print("Error!")
+                    return
+            else:
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    rlist.append(i)
+                else:
+                    print("Error!")
+                    return
+        return rlist
+
+    def grouping_sqbrackets(self,vec:list) -> list[str]:
+        rlist:list[str] = list()
+        group:list[str] = list()
+        depth:int = 0
+
+        for i in vec:
+            if i == '[':
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    pass
+                else:
+                    print("Error!")
+                    return
+                depth += 1
+            elif i == ']':
+                depth -= 1
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    rlist.append(ListBlock.new(None,copy.copy(group)))
+                    group.clear()
+                else:
+                    print("Error!")
+                    return
+            else:
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    rlist.append(i)
+                else:
+                    print("Error!")
+                    return
+        return rlist
+
+    def grouping_paren(self,vec:list) -> list:
+        rlist:list[str] = list()
+        group:list[str] = list()
+        depth:int = 0
+
+        for i in vec:
+            if i == '(':
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    pass
+                else:
+                    print("Error!")
+                    return
+                depth += 1
+            elif i == ')':
+                depth -= 1
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    rlist.append(ParenBlock.new(None,copy.copy(group)))
+                    group.clear()
+                else:
+                    print("Error!")
+                    return
+            else:
+                if depth > 0:
+                    group.append(i)
+                elif depth == 0:
+                    rlist.append(i)
+                else:
+                    print("Error!")
+                    return
         return rlist
 
     def is_symbol(self,index:int,vec:list) -> tuple[bool,str,int]:
@@ -133,6 +232,98 @@ class Expr_element:
         elif self.mode == "PM":
             return f"({' '.join(map(repr,self.args))} {self.name})"
         return f"({' '.join(map(repr,self.args))} {self.name})"
+
+
+# class ABCElem(metaclass = ABCMeta):
+#     @abstractmethod
+#     def __init__(self, name:str, contents:str) -> None:
+#         self.name = name
+#         self.contents = contents
+#     @abstractmethod
+#     @classmethod
+#     def new(cls, name:str, contents:str) -> "ABCElem":
+#         return ABCElem(name, contents)
+#     @ abstractmethod
+#     def get_contents(self):
+#         return self.contents
+#     def get_name(self):
+#         return self.name
+
+
+class Block:
+    def __init__(self,name:str,contents:str):
+        self.name = name
+        self.contents = contents
+
+    @classmethod
+    def new(cls,name:str,contents:str) -> "Block":
+        return Block(name,contents)
+
+    def get_contents(self):
+        return self.contents
+    
+    def get_name(self):
+        return self.name
+
+    def __repr__(self) -> str:
+        return f"<Block name:({self.name}) contents:({self.contents})>"
+
+
+class String:
+    def __init__(self,name:str,contents:str):
+        self.name = name
+        self.contents = contents
+
+    @classmethod
+    def new(cls,name:str,contents:str) -> "String":
+        return String(name,contents)
+
+    def get_contents(self):
+        return self.contents
+    
+    def get_name(self):
+        return self.name
+
+    def __repr__(self) -> str:
+        return f"<String name:({self.name}) contents:({self.contents})>"
+
+
+class ListBlock:
+    def __init__(self,name:str,contents:str):
+        self.name = name
+        self.contents = contents
+
+    @classmethod
+    def new(cls,name:str,contents:str) -> "ListBlock":
+        return ListBlock(name,contents)
+
+    def get_contents(self):
+        return self.contents
+    
+    def get_name(self):
+        return self.name
+
+    def __repr__(self) -> str:
+        return f"<ListBlock name:({self.name}) contents:({self.contents})>"
+
+
+class ParenBlock:
+    def __init__(self,name:str,contents:str):
+        self.name = name
+        self.contents = contents
+
+    @classmethod
+    def new(cls,name:str,contents:str) -> "ParenBlock":
+        return ParenBlock(name,contents)
+
+    def get_contents(self):
+        return self.contents
+    
+    def get_name(self):
+        return self.name
+
+    def __repr__(self) -> str:
+        return f"<ParenBlock name:({self.name}) contents:({self.contents})>"
 
 
 class Proc_parser:
@@ -444,9 +635,14 @@ def __test_02():
     test_cases:list = list()
     with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
     # print(test_cases)
-    codelist = a.resolve_quotation(test_cases[2],"\"")
-    print(codelist)
-    print(len(codelist[0]))
+    for testcase in test_cases:
+        codelist = a.resolve_quotation(testcase,"\"")
+        codelist = a.resolve_quotation(codelist,"'")
+        codelist = a.grouping_brackets(codelist)
+        codelist = a.grouping_paren(codelist)
+        codelist = a.grouping_sqbrackets(codelist)
+        print(testcase,codelist)
+        print()
 
 
 

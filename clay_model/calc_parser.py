@@ -31,7 +31,7 @@ class func:
     def split(self) -> tuple[str,str]:
         index = self.code.find("(")
         if index<0:
-            raise BaseException("引数部分の文法が不正だと思われます。おそらく")
+            raise BaseException("引数部分の文法が不正。")
         else:
             funcname:str = self.code[:index]
             funcargs:str = self.code[index:]
