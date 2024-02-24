@@ -51,13 +51,52 @@ class Expr_parser:
             "^":3,"**":3
         }
         self.length_order = sorted(self.rankinglist.keys(),key=lambda a:len(a))[::-1]
+        
+        # const
+        self.ESCAPESTRING = "\\"
 
     # クォーテーションはまとまっている前提
-    def resolve_quotation(self,code:str) -> list[str]:
-        """
-        resolve "" or ''
-        """
-        
+    def resolve_quotation(self,code:str,quo_char:str) -> list[str]:
+        # クォーテーションをまとめる
+        open_flag:bool = False
+        escape_flag:bool = False
+        rlist:list = list()
+        group:list = list()
+        newline_counter :int = 0
+        column_counter:int = 0
+        for inner in code:
+            if inner == "\n":
+                column_counter = 0
+                newline_counter += 1
+            else:
+                column_counter += 1
+
+            if escape_flag:
+                group.append(inner)
+                escape_flag = False
+            else:
+                if inner == quo_char:
+                    if open_flag:
+                        group.append(inner)
+                        rlist.append(
+                            "".join(group)
+                        )
+                        group.clear()
+                        open_flag = False
+                    else:
+                        group.append(inner)
+                        position = (newline_counter,column_counter)
+                        open_flag = True
+                else:
+                    if open_flag:
+                        if inner == self.ESCAPESTRING:
+                            escape_flag = True
+                        else:
+                            escape_flag = False
+                        group.append(inner)
+                    else:
+                        rlist.append(inner)
+        return rlist
 
     def grouping_brackets(self,vec:str) -> list[str]:
         rlist:list[str] = list()
@@ -399,6 +438,17 @@ for i in list{
     codelist = a.resolve1(codelist)
     print(list(filter(lambda a:not (a.get_type is Object_tag.UNDEF or a.contents==" "),codelist)))
 
+def __test_02():
+    a = Expr_parser("")
+    # expr test cases
+    test_cases:list = list()
+    with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
+    # print(test_cases)
+    codelist = a.resolve_quotation(test_cases[2],"\"")
+    print(codelist)
+    print(len(codelist[0]))
+
+
 
 if __name__=="__main__":
-    __test_00()
+    __test_02()
