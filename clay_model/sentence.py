@@ -80,7 +80,7 @@ class Expr_parser:
                     if open_flag:
                         group.append(inner)
                         rlist.append(
-                            String.new(None,"".join(group))
+                            String(None,"".join(group))
                         )
                         group.clear()
                         open_flag = False
@@ -119,7 +119,7 @@ class Expr_parser:
                 if depth > 0:
                     group.append(i)
                 elif depth == 0:
-                    rlist.append(Block.new(None,copy.copy(group)))
+                    rlist.append(Block(None,copy.copy(group)))
                     group.clear()
                 else:
                     print("Error!")
@@ -154,7 +154,7 @@ class Expr_parser:
                 if depth > 0:
                     group.append(i)
                 elif depth == 0:
-                    rlist.append(ListBlock.new(None,copy.copy(group)))
+                    rlist.append(ListBlock(None,copy.copy(group)))
                     group.clear()
                 else:
                     print("Error!")
@@ -189,7 +189,7 @@ class Expr_parser:
                 if depth > 0:
                     group.append(i)
                 elif depth == 0:
-                    rlist.append(ParenBlock.new(None,copy.copy(group)))
+                    rlist.append(ParenBlock(None,copy.copy(group)))
                     group.clear()
                 else:
                     print("Error!")
@@ -234,96 +234,37 @@ class Expr_element:
         return f"({' '.join(map(repr,self.args))} {self.name})"
 
 
-# class ABCElem(metaclass = ABCMeta):
-#     @abstractmethod
-#     def __init__(self, name:str, contents:str) -> None:
-#         self.name = name
-#         self.contents = contents
-#     @abstractmethod
-#     @classmethod
-#     def new(cls, name:str, contents:str) -> "ABCElem":
-#         return ABCElem(name, contents)
-#     @ abstractmethod
-#     def get_contents(self):
-#         return self.contents
-#     def get_name(self):
-#         return self.name
+class Elem:
 
-
-class Block:
-    def __init__(self,name:str,contents:str):
+    def __init__(self, name:str, contents:str) -> None:
         self.name = name
         self.contents = contents
 
-    @classmethod
-    def new(cls,name:str,contents:str) -> "Block":
-        return Block(name,contents)
+    def get_contents(self):return self.contents
 
-    def get_contents(self):
-        return self.contents
+    def get_name(self):return self.name
     
-    def get_name(self):
-        return self.name
-
-    def __repr__(self) -> str:
-        return f"<Block name:({self.name}) contents:({self.contents})>"
+    def __repr__(self):return f"<{type(self).__name__} name:({self.name}) contents:({self.contents})>"
 
 
-class String:
-    def __init__(self,name:str,contents:str):
-        self.name = name
-        self.contents = contents
+class Block(Elem):
 
-    @classmethod
-    def new(cls,name:str,contents:str) -> "String":
-        return String(name,contents)
-
-    def get_contents(self):
-        return self.contents
-    
-    def get_name(self):
-        return self.name
-
-    def __repr__(self) -> str:
-        return f"<String name:({self.name}) contents:({self.contents})>"
+    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
 
-class ListBlock:
-    def __init__(self,name:str,contents:str):
-        self.name = name
-        self.contents = contents
+class String(Elem):
 
-    @classmethod
-    def new(cls,name:str,contents:str) -> "ListBlock":
-        return ListBlock(name,contents)
-
-    def get_contents(self):
-        return self.contents
-    
-    def get_name(self):
-        return self.name
-
-    def __repr__(self) -> str:
-        return f"<ListBlock name:({self.name}) contents:({self.contents})>"
+    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
 
-class ParenBlock:
-    def __init__(self,name:str,contents:str):
-        self.name = name
-        self.contents = contents
+class ListBlock(Elem):
 
-    @classmethod
-    def new(cls,name:str,contents:str) -> "ParenBlock":
-        return ParenBlock(name,contents)
+    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
-    def get_contents(self):
-        return self.contents
-    
-    def get_name(self):
-        return self.name
 
-    def __repr__(self) -> str:
-        return f"<ParenBlock name:({self.name}) contents:({self.contents})>"
+class ParenBlock(Elem):
+
+    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
 
 class Proc_parser:

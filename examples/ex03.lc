@@ -1,3 +1,4 @@
 0 + if (i % 2 == 0) {i/2} else {i*3 + 1}
-for i in range(10){ j += i }then{return j;} + add(1 , 1)
+for i in range(10){ print("hello world");print("hello world");j += i }then{return j;} + add(1 , 1)
 "hell\\o" + "world"
+["hello", world123,123,1+2*3]
