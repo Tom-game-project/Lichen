@@ -1,0 +1,12 @@
+fn gcd(a:i32,b:i32):i32{
+    if b == 0{
+        return a;
+    }else{
+        return gcd(b,a%b);//コメント
+    };
+}
+fn main(){
+    let a = 123456789;
+    let b = 987654321;
+    debug("gcd(%d, %d) -> %d", a, b, gcd(a, b));
+}

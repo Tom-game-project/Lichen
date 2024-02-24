@@ -1,0 +1,18 @@
+const list = ["hello","world"];
+const string = "world";
+
+fn add(a:i32,b:i32){
+    return a+b;
+}
+
+fn main ():int{
+    for i in list{
+        const flag = string==i;
+        if if flag {1} else {0}{
+            const a = "hello" + "world";
+            print("hello" + "world");
+            let a = add(1,1);
+            a
+        };
+    };
+}

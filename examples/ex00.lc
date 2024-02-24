@@ -17,4 +17,3 @@ pub fn fizzbazz(num:i32):void
 		print(num)
 	}
 }
-
