@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wat ex01</title>
+</head>
+<body>
+    <h1></h1>
+    <pre>
+
+    </pre>
+    <script type="text/javascript">
+        WebAssembly.instantiateStreaming(fetch("ex00.wasm")).then((obj) => {
+            console.log(obj.instance.exports.gcd(123456789, 987654321)); 
+        });
+    </script>
+</body>
+</html>

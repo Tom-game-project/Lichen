@@ -31,18 +31,69 @@ class Object_tag(Enum):
 class Expr_parser:
     # resolve <expr>
     # 式を解決します
-    def __init__(self,code:str,mode="expr") -> None:
-        self.code = code
-    
-    def list_resolve():
+    def __init__(self, code:str, mode = "lisp") -> None:
+        self.code:str = code
+        self.mode = mode
+        # <, <=, >, >=, !=,
+        self.rankinglist:dict = {
+            # 演算子優先順位
+            "&&":-1,"||":-1,
+
+            "==":0,"!=":0,
+            "<":0,">":0,
+            "<=":0,">=":0,
+
+            "+":1,"-":1,
+
+            "*":2,"/":2,
+            "%":2,"@":2,
+
+            "^":3,"**":3
+        }
+        self.length_order = sorted(self.rankinglist.keys(),key=lambda a:len(a))[::-1]
+
+    # クォーテーションはまとまっている前提
+    def resolve_quotation(self,code:str) -> list[str]:
+        """
+        resolve "" or ''
+        """
+        
+
+    def grouping_brackets(self,vec:str) -> list[str]:
+        rlist:list[str] = list()
+        group:list[str] = list()
+        for i in vec:
+            pass
+        return rlist
+
+    def is_symbol(self,index:int,vec:list) -> tuple[bool,str,int]:
         pass
 
+    def split_symbol(self,vec:list[str]) -> list[str]:
+        pass
+
+    def code2vec(self,code:str) ->list[str]:
+        vec = self.resolve_quotation(code)
+        vec = self.grouping_brackets(vec)
+        vec = self.split_symbol()
+        return vec
 
 class Expr_element:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, name:str, type_:str, args:list, mode="expr") -> None:
+        self.mode = mode
+        self.name:str = name
+        self.args:list = args
+        self.type_ = type_
     
+    def __getitem__(self, key):
+        return self.args[key]
     
+    def __repr__(self) -> str:
+        if self.mode == "lisp":
+            return f"({self.name} {' '.join(map(lambda a:str(a) if type(a) is str else repr(a),self.args))})"
+        elif self.mode == "PM":
+            return f"({' '.join(map(repr,self.args))} {self.name})"
+        return f"({' '.join(map(repr,self.args))} {self.name})"
 
 
 class Proc_parser:

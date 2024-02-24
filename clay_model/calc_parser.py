@@ -245,6 +245,9 @@ class elem:
                             return True
         return False
 
+    def __is_control(self,code:str) -> bool:
+        pass
+
     @property
     def elemtype(self) -> Elem_type:
         if self.__is_OPERATION(self.code):
@@ -650,8 +653,8 @@ def __test_03():
         "0< index + i <= size"
     ]
     for i in test_case:
-        par = parser(i,mode="PM")
-        tree = par.resolve()
+        par:parser = parser(i,mode="PM")
+        tree:formula_tree = par.resolve()
         wat_conv = tree2wat(tree)
         stack = wat_conv.gen_code()
         print(i,tree)
