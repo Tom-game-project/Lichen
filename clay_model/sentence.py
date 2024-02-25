@@ -99,13 +99,13 @@ class Expr_parser:
                         rlist.append(inner)
         return rlist
 
-    def grouping_brackets(self,vec:list) -> list[str]:
+    def grouping_elements(self,vec:list,open_char:str,close_char:str,ObjectInstance:"Elem") -> list:
         rlist:list[str] = list()
         group:list[str] = list()
         depth:int = 0
 
         for i in vec:
-            if i == '{':
+            if i == open_char:
                 if depth > 0:
                     group.append(i)
                 elif depth == 0:
@@ -114,82 +114,12 @@ class Expr_parser:
                     print("Error!")
                     return
                 depth += 1
-            elif i == '}':
+            elif i == close_char:
                 depth -= 1
                 if depth > 0:
                     group.append(i)
                 elif depth == 0:
-                    rlist.append(Block(None,copy.copy(group)))
-                    group.clear()
-                else:
-                    print("Error!")
-                    return
-            else:
-                if depth > 0:
-                    group.append(i)
-                elif depth == 0:
-                    rlist.append(i)
-                else:
-                    print("Error!")
-                    return
-        return rlist
-
-    def grouping_sqbrackets(self,vec:list) -> list[str]:
-        rlist:list[str] = list()
-        group:list[str] = list()
-        depth:int = 0
-
-        for i in vec:
-            if i == '[':
-                if depth > 0:
-                    group.append(i)
-                elif depth == 0:
-                    pass
-                else:
-                    print("Error!")
-                    return
-                depth += 1
-            elif i == ']':
-                depth -= 1
-                if depth > 0:
-                    group.append(i)
-                elif depth == 0:
-                    rlist.append(ListBlock(None,copy.copy(group)))
-                    group.clear()
-                else:
-                    print("Error!")
-                    return
-            else:
-                if depth > 0:
-                    group.append(i)
-                elif depth == 0:
-                    rlist.append(i)
-                else:
-                    print("Error!")
-                    return
-        return rlist
-
-    def grouping_paren(self,vec:list) -> list:
-        rlist:list[str] = list()
-        group:list[str] = list()
-        depth:int = 0
-
-        for i in vec:
-            if i == '(':
-                if depth > 0:
-                    group.append(i)
-                elif depth == 0:
-                    pass
-                else:
-                    print("Error!")
-                    return
-                depth += 1
-            elif i == ')':
-                depth -= 1
-                if depth > 0:
-                    group.append(i)
-                elif depth == 0:
-                    rlist.append(ParenBlock(None,copy.copy(group)))
+                    rlist.append(ObjectInstance(None,copy.copy(group)))
                     group.clear()
                 else:
                     print("Error!")
@@ -233,7 +163,7 @@ class Expr_element:
             return f"({' '.join(map(repr,self.args))} {self.name})"
         return f"({' '.join(map(repr,self.args))} {self.name})"
 
-
+# Base Elem
 class Elem:
 
     def __init__(self, name:str, contents:str) -> None:
@@ -247,6 +177,7 @@ class Elem:
     def __repr__(self):return f"<{type(self).__name__} name:({self.name}) contents:({self.contents})>"
 
 
+# Elements
 class Block(Elem):
 
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
@@ -266,7 +197,7 @@ class ParenBlock(Elem):
 
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
-
+# Proc_parser
 class Proc_parser:
     # resolve <proc>
     # 処理を解決します
@@ -585,7 +516,23 @@ def __test_02():
         print(testcase,codelist)
         print()
 
+def __test_03():
+    a = Expr_parser("")
+    # expr test cases
+    test_cases:list = list()
+    with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
+    # print(test_cases)
+    for testcase in test_cases:
+        codelist = a.resolve_quotation(testcase,"\"")
+        codelist = a.resolve_quotation(codelist,"'")
+        for i in [
+            ('{','}',Block),
+            ('[',']',ListBlock),
+            ('(',')',ParenBlock)]:
+            codelist = a.grouping_elements(codelist,*i)
+        print(testcase,codelist)
+        print()
 
 
 if __name__=="__main__":
-    __test_02()
+    __test_03()
