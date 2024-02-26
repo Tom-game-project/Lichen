@@ -29,7 +29,7 @@ class Object_tag(Enum):
     WORD = auto()
 
 
-class Expr_parser:
+class parser:
     # resolve <expr>
     # 式を解決します
     def __init__(self, code:str, mode = "lisp") -> None:
@@ -54,7 +54,7 @@ class Expr_parser:
             "^":3,"**":3
         }
         # TODO: 前置修飾(prefix)たとえば!(not)を解決する必要がある
-        self.length_order = sorted(self.rankinglist.keys(),key=lambda a:len(a))[::-1]
+        self.length_order_ope_list = sorted(self.rankinglist.keys(),key=lambda a:len(a))[::-1]
         self.blocks = [
             ('{','}',Block),
             ('[',']',ListBlock),
@@ -185,7 +185,10 @@ class Expr_parser:
                     group.clear()
                 rlist.append(i)
             else:
-                group.append(i)
+                group.append(i) 
+        if group:
+            rlist.append(Word(None,''.join(group)))
+            group.clear()
         return rlist
     
     def grouping_syntax(self,vec:list,syntax_words:list[str]) -> list:
@@ -245,6 +248,8 @@ class Expr_parser:
         rlist:list = list()
         for i in vec:
             if type(i) is Word:
+                if flag:
+                    rlist.append(name_tmp)
                 name_tmp  = i
                 flag = True
             elif type(i) is ParenBlock:
@@ -256,6 +261,8 @@ class Expr_parser:
                     ))
                     name_tmp = None
                     flag = False
+                else:
+                    rlist.append(i)
             else:
                 if flag:
                     rlist.append(name_tmp)
@@ -266,6 +273,39 @@ class Expr_parser:
                     rlist.append(i)
         if flag:
             rlist.append(name_tmp)
+        return rlist
+
+    def find_ope_from_list(self, text:str, ordered_opelist:list[str]) -> str:
+        """
+        演算子文字列が長い物から順に照会していって検索する
+        # return
+        str | None
+        """
+        for i in ordered_opelist:
+            if text == i:
+                return text
+        return None
+
+    def grouping_operator(self,vec:list,ordered_opelist:list[str]):
+        """
+        opeは長い順に並んでいる必要があります ex) ["<<<","<<","<"]
+        """
+        group:list = list()
+        rlist:list = list()
+        for i in vec:
+            if not isinstance(i,Elem):
+                # ここに来てもまだ、Elemインスタンスでない(すなわち、まだ未定の場合)
+                group.append(i)
+            else:
+                if group:
+                    ope =''.join(group) 
+                    ope_text = self.find_ope_from_list(ope, ordered_opelist)
+                    if ope_text is None:
+                        rlist += group # concat
+                    else:
+                        rlist.append(Operator(ope))
+                    group.clear()
+                rlist.append(i)
         return rlist
 
     def is_number(self,text:str) -> bool:
@@ -293,28 +333,14 @@ class Expr_parser:
         for i in self.blocks:codelist = self.grouping_elements(codelist, *i)
         # Wordをまとめる
         codelist = self.grouping_words(codelist, self.split, self.word_excludes)
-        codelist = self.grouping_syntax( codelist, self.syntax_words)
-        codelist = self.grouping_function(codelist) 
-        # codelist = self.split_symbol(codelist)
+        ## if, elif, else, forをまとめる
+        codelist = self.grouping_syntax(codelist, self.syntax_words)
+        ## functionの呼び出しをまとめる
+        codelist = self.grouping_function(codelist)
+        # TODO:もし配列モードであればここでカンマ区切りの処理をする
+        # ここで初めて演算子をまとめる
+        codelist = self.grouping_operator(codelist,self.length_order_ope_list)
         return codelist
-
-
-class Expr_element:
-    def __init__(self, name:str, type_:str, args:list, mode="expr") -> None:
-        self.mode = mode
-        self.name:str = name
-        self.args:list = args
-        self.type_ = type_
-
-    def __getitem__(self, key):
-        return self.args[key]
-
-    def __repr__(self) -> str:
-        if self.mode == "lisp":
-            return f"({self.name} {' '.join(map(lambda a:str(a) if type(a) is str else repr(a),self.args))})"
-        elif self.mode == "PM":
-            return f"({' '.join(map(repr,self.args))} {self.name})"
-        return f"({' '.join(map(repr,self.args))} {self.name})"
 
 
 # Base Elem
@@ -419,6 +445,19 @@ class Func(Elem):
 
     def __repr__(self):
         return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
+
+class Operator(Elem):
+    """
+    # returns
+    get_contents -> ope(ope:["+","-","*","/",...])
+    """
+
+    def __init__(self, ope:str) -> None:
+        super().__init__(None, ope)
+        self.ope = ope
+
+    def __repr__(self):
+        return f"<{type(self).__name__} ope:({self.ope})>"
 
 
 # Proc_parser
@@ -726,7 +765,7 @@ for (i <- list){
     print(list(filter(lambda a:not (a.get_type is Object_tag.UNDEF or a.contents==" "),codelist)))
 
 def __test_02():
-    a = Expr_parser("")
+    a = parser("")
     # expr test cases
     test_cases:list = list()
     with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
@@ -743,7 +782,7 @@ def __test_02():
         print()
 
 def __test_03():
-    a = Expr_parser("")
+    a = parser("")
     # expr test cases
     test_cases:list = list()
     with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
@@ -754,15 +793,44 @@ def __test_03():
         print()
 
 def __test_04():
-    a = Expr_parser("")
+    """
+    # __test_04
+    ## expr test
+
+    
+    """
+    a = parser("")
     # expr test cases
-    with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
-    # print(test_cases)
-    testcase = test_cases[3]
-    codelist = a.code2vec(testcase)
-    print(testcase,codelist)
-    print()
+    test_cases = [
+"""
+for (i <- list){
+    const flag = string==i;
+    if (if (flag){1} else {0}){
+        const a = "hello" + "world";
+        print("hello" + "world");
+    };
+}
+""",
+    " 10 + ( x + log10(2) * sin(x) ) * log10(x)",
+    "(-sin(x)*3)+(-2*cos(x))",
+    "pi",
+    "sin(x)",
+    "(1)+2",
+    "3.14",
+    "-812+42",
+    "a / b*(c+d)",
+    "a / (b*(c+d))",
+    "a*a*a",
+    "x^3+x^2+3",
+    "2*cube(x)+3*squared(x)+3",
+    "10<=d<100"
+    ]
+    for testcase in test_cases:
+        codelist = a.code2vec(testcase)
+        print(testcase)
+        pprint(codelist)
+        print()
 
 
 if __name__=="__main__":
-    __test_03()
+    __test_04()
