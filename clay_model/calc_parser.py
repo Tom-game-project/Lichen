@@ -356,7 +356,7 @@ class parser:
         size = len(vec)
         for string in self.length_order:# self.length_oerderは長い順に並んだ配列
             for i,char in enumerate(string): 
-                if 0 <= index+i < size and vec[index+i]!=char:
+                if 0 <= index+i < size and vec[index+i] != char:
                     break
             else:
                 return (True, string, len(string))

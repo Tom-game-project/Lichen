@@ -1,5 +1,4 @@
 from enum import Enum,auto
-from abc import ABCMeta,abstractmethod
 
 # debug tools
 from pprint import pprint
@@ -36,7 +35,9 @@ class Expr_parser:
     def __init__(self, code:str, mode = "lisp") -> None:
         self.code:str = code
         self.mode = mode
-        # <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
+
+        # setting
+        ## <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
         self.rankinglist:dict = {
             # 演算子優先順位
             "&&":-1,"||":-1,
@@ -52,10 +53,28 @@ class Expr_parser:
 
             "^":3,"**":3
         }
+        # TODO: 前置修飾(prefix)たとえば!(not)を解決する必要がある
         self.length_order = sorted(self.rankinglist.keys(),key=lambda a:len(a))[::-1]
-        
+        self.blocks = [
+            ('{','}',Block),
+            ('[',']',ListBlock),
+            ('(',')',ParenBlock),
+        ]
+        self.split = [' ', '\t','\n']
+        self.word_excludes = [';',':',',']
+        self.syntax_words = [
+            "if",
+            "elif",
+            "else",
+            "loop",
+            "for",
+            "while"
+        ]
         # const
         self.ESCAPESTRING = "\\"
+    # expr range checker
+    def expr_range_cheacker(self):
+        pass
 
     # クォーテーションはまとまっている前提
     def resolve_quotation(self,code:str,quo_char:str) -> list[str]:
@@ -100,6 +119,7 @@ class Expr_parser:
                         rlist.append(inner)
         return rlist
 
+    # grouping functions
     def grouping_elements(self,vec:list,open_char:str,close_char:str,ObjectInstance:"Elem") -> list:
         rlist:list[str] = list()
         group:list[str] = list()
@@ -169,8 +189,6 @@ class Expr_parser:
         return rlist
     
     def grouping_syntax(self,vec:list,syntax_words:list[str]) -> list:
-        """
-        """
         flag:bool = False
         group:list = list()
         rlist:list = list()
@@ -220,13 +238,50 @@ class Expr_parser:
             else:
                 rlist.append(i)
         return rlist
-            
+    
+    def grouping_function(self,vec:list) -> list:
+        flag:bool = False
+        name_tmp:Word = None
+        rlist:list = list()
+        for i in vec:
+            if type(i) is Word:
+                name_tmp  = i
+                flag = True
+            elif type(i) is ParenBlock:
+                if flag:
+                    rlist.append(
+                        Func(
+                            name_tmp.get_contents(),# func name
+                            i.get_contents(),       # args
+                    ))
+                    name_tmp = None
+                    flag = False
+            else:
+                if flag:
+                    rlist.append(name_tmp)
+                    rlist.append(i)
+                    flag = False
+                    name_tmp = None
+                else:
+                    rlist.append(i)
+        if flag:
+            rlist.append(name_tmp)
+        return rlist
 
-    def grouping_syntax2(self,vec:list) -> list:
-        pass
-
-    def is_symbol(self,index:int,vec:list) -> tuple[bool,str,int]:
-        pass
+    def is_number(self,text:str) -> bool:
+        size = len(text)
+        for i,j in enumerate(text):
+            if i == 0 and j=='.':
+                # ex) .141592
+                return False
+            if i == size - 1 and j=='.':
+                # ex) 3.
+                return False
+            elif '0' <= j <= '9':
+                pass
+            else:
+                return False
+        return True
 
     def split_symbol(self,vec:list[str]) -> list[str]:
         pass
@@ -235,21 +290,11 @@ class Expr_parser:
         # クォーテーションをまとめる
         codelist = self.resolve_quotation(code, "\"")
         # ブロック、リストブロック、パレンブロック Elemをまとめる
-        for i in [
-            ('{','}',Block),
-            ('[',']',ListBlock),
-            ('(',')',ParenBlock),
-        ]:codelist = self.grouping_elements(codelist, *i)
+        for i in self.blocks:codelist = self.grouping_elements(codelist, *i)
         # Wordをまとめる
-        codelist = self.grouping_words(
-            codelist,
-            split = [' ', '\t', '\n'],
-            excludes = [';', ':']
-        )
-        codelist = self.grouping_syntax(
-            codelist,
-            syntax_words=["if", "elif", "else", "loop", "for", "while"]
-        )
+        codelist = self.grouping_words(codelist, self.split, self.word_excludes)
+        codelist = self.grouping_syntax( codelist, self.syntax_words)
+        codelist = self.grouping_function(codelist) 
         # codelist = self.split_symbol(codelist)
         return codelist
 
@@ -270,6 +315,7 @@ class Expr_element:
         elif self.mode == "PM":
             return f"({' '.join(map(repr,self.args))} {self.name})"
         return f"({' '.join(map(repr,self.args))} {self.name})"
+
 
 # Base Elem
 class Elem:
@@ -300,7 +346,6 @@ class Block(Elem):
     """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
-
 class String(Elem):
     """
     文字列を格納
@@ -311,7 +356,6 @@ class String(Elem):
     """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
-
 class ListBlock(Elem):
     """
     リストを格納
@@ -320,7 +364,6 @@ class ListBlock(Elem):
     get_contents -> [<expr>,...] # 式集合
     """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
-
 
 class ParenBlock(Elem):
     """
@@ -346,7 +389,6 @@ class Word(Elem):# Word Elemは仮どめ
     """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
-
 class Syntax(Elem):
     """
     # returns
@@ -365,6 +407,18 @@ class Syntax(Elem):
     def __repr__(self):
         # override
         return f"<{type(self).__name__} name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
+
+class Func(Elem):
+    """
+    <name(excludes: 0-9)>(<expr>,...)
+    # returns
+    get_contents -> (srgs:[<expr>,...])
+    get_name -> (funcname: <name>)
+    """
+    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+
+    def __repr__(self):
+        return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
 
 
 # Proc_parser
@@ -659,13 +713,13 @@ def __test_01():
     code = """
 const list = [[1,1,1],[0,0,0],[1,1,1]];
 const string = "world";
-for i in list{
+for (i <- list){
     const flag = string==i;
-    if if flag {1} else {0}{
+    if (if (flag){1} else {0}){
         const a = "hello" + "world";
         print("hello" + "world");
-    }
-}
+    };
+};
 """
     codelist = a.resolve0(code)
     codelist = a.resolve1(codelist)
