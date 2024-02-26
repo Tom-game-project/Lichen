@@ -29,6 +29,7 @@ class Object_tag(Enum):
     # 単語
     WORD = auto()
 
+
 class Expr_parser:
     # resolve <expr>
     # 式を解決します
@@ -134,6 +135,39 @@ class Expr_parser:
                     return
         return rlist
 
+    def grouping_words(self,vec:list,split:list[str],excludes:list[str]) -> list[str]:
+        """
+        # wordを切り出すメソッド
+        
+        - すでにElem に到達したらその時点で区切る
+        - 区切り文字に到達したら区切る(/*例えば*/ 区切り文字: '\t', ' ', '\n')
+        - 演算子に使用されている文字であれば区切る
+        """
+        rlist:list = list()
+        group:list = list()
+        ope_chars:str = ''.join(self.rankinglist.keys())
+        ope_chars = ope_chars + ''.join(excludes)
+        for i in vec:
+            if isinstance(i,Elem):# Elemクラスを継承しているかどうか調べる
+                # すでにrole決定済み
+                if group:
+                    rlist.append(Word(None,''.join(group)))
+                    group.clear()
+                rlist.append(i)
+            elif i in split:
+                # 区切り文字
+                if group:
+                    rlist.append(Word(None,''.join(group)))
+                    group.clear()
+            elif i in ope_chars:
+                if group:
+                    rlist.append(Word(None,''.join(group)))
+                    group.clear()
+                rlist.append(i)
+            else:
+                group.append(i)
+        return rlist
+
     def is_symbol(self,index:int,vec:list) -> tuple[bool,str,int]:
         pass
 
@@ -141,10 +175,23 @@ class Expr_parser:
         pass
 
     def code2vec(self,code:str) ->list[str]:
-        vec = self.resolve_quotation(code)
-        vec = self.grouping_brackets(vec)
-        vec = self.split_symbol()
-        return vec
+        # クォーテーションをまとめる
+        codelist = self.resolve_quotation(code, "\"")
+        # ブロック、リストブロック、パレンブロック Elemをまとめる
+        for i in [
+            ('{','}',Block),
+            ('[',']',ListBlock),
+            ('(',')',ParenBlock),
+        ]:codelist = self.grouping_elements(codelist, *i)
+        # Wordをまとめる
+        codelist = self.grouping_words(
+            codelist,
+            split = [' ', '\t', '\n'],
+            excludes = [';', ':', '.']
+        )
+        # codelist = self.split_symbol(codelist)
+        return codelist
+
 
 class Expr_element:
     def __init__(self, name:str, type_:str, args:list, mode="expr") -> None:
@@ -152,10 +199,10 @@ class Expr_element:
         self.name:str = name
         self.args:list = args
         self.type_ = type_
-    
+
     def __getitem__(self, key):
         return self.args[key]
-    
+
     def __repr__(self) -> str:
         if self.mode == "lisp":
             return f"({self.name} {' '.join(map(lambda a:str(a) if type(a) is str else repr(a),self.args))})"
@@ -165,7 +212,9 @@ class Expr_element:
 
 # Base Elem
 class Elem:
-
+    """
+    字句解析用データ型
+    """
     def __init__(self, name:str, contents:str) -> None:
         self.name = name
         self.contents = contents
@@ -179,23 +228,79 @@ class Elem:
 
 # Elements
 class Block(Elem):
-
+    """
+    処理集合を格納
+    <block> = {
+        <proc>
+    }
+    <proc> = <expr> ;...
+    # returns
+    get_contents -> <proc>
+    """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
 
 class String(Elem):
-
+    """
+    文字列を格納
+    "<string>"
+    '<char>'
+    # returns
+    get_contents -> <string> or <char>
+    """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
 
 class ListBlock(Elem):
-
+    """
+    リストを格納
+    [<expr>,...]
+    # returns
+    get_contents -> [<expr>,...] # 式集合
+    """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
 
 class ParenBlock(Elem):
-
+    """
+    式ブロック
+    または
+    関数の引数宣言部
+    (<expr>,...)
+    or
+    (<dec>,...)
+    <dec> = <word>:<type>
+    # returns
+    get_contents -> <expr>,... # 式集合 式の範囲で宣言集合になることはない
+    """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+
+class Word(Elem):# Word Elemは仮どめ
+    """
+    引数、変数、関数定義、制御文法の文字列
+    <word> = fn, let, const, if, while...(exclude: +, -, *, /)
+    <word> = <syntax>, <name>, <type>, <Number>
+    # returns
+    get_contents -> <word>
+    """
+    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+
+
+class Syntax(Elem):
+    """
+    # returns
+    <syntax> = if, elif, else, loop, for, while
+    get_name ->  if, elif, else, loop, for, while
+    get_expr -> <expr>
+    get_contents -> {<proc>}
+    """ 
+    def __init__(self, name: str, expr, contents) -> None:
+        super().__init__(name, contents)
+        self.expr = expr
+
+    def get_expr(self):
+        return self.expr
+
 
 # Proc_parser
 class Proc_parser:
@@ -510,9 +615,11 @@ def __test_02():
     for testcase in test_cases:
         codelist = a.resolve_quotation(testcase,"\"")
         codelist = a.resolve_quotation(codelist,"'")
-        codelist = a.grouping_brackets(codelist)
-        codelist = a.grouping_paren(codelist)
-        codelist = a.grouping_sqbrackets(codelist)
+        for i in [
+            ('{','}',Block),
+            ('[',']',ListBlock),
+            ('(',')',ParenBlock)]:
+            codelist = a.grouping_elements(codelist,*i)
         print(testcase,codelist)
         print()
 
@@ -523,15 +630,19 @@ def __test_03():
     with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
     # print(test_cases)
     for testcase in test_cases:
-        codelist = a.resolve_quotation(testcase,"\"")
-        codelist = a.resolve_quotation(codelist,"'")
-        for i in [
-            ('{','}',Block),
-            ('[',']',ListBlock),
-            ('(',')',ParenBlock)]:
-            codelist = a.grouping_elements(codelist,*i)
-        print(testcase,codelist)
+        codelist = a.code2vec(testcase)
+        pprint(codelist)
         print()
+
+def __test_04():
+    a = Expr_parser("")
+    # expr test cases
+    with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
+    # print(test_cases)
+    testcase = test_cases[3]
+    codelist = a.code2vec(testcase)
+    print(testcase,codelist)
+    print()
 
 
 if __name__=="__main__":
