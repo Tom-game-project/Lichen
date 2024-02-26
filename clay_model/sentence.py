@@ -36,7 +36,7 @@ class Expr_parser:
     def __init__(self, code:str, mode = "lisp") -> None:
         self.code:str = code
         self.mode = mode
-        # <, <=, >, >=, !=,
+        # <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
         self.rankinglist:dict = {
             # 演算子優先順位
             "&&":-1,"||":-1,
@@ -167,6 +167,63 @@ class Expr_parser:
             else:
                 group.append(i)
         return rlist
+    
+    def grouping_syntax(self,vec:list,syntax_words:list[str]) -> list:
+        """
+        """
+        flag:bool = False
+        group:list = list()
+        rlist:list = list()
+        for i in vec:
+            if type(i) is Word:
+                if i.get_contents() in syntax_words:
+                    group.append(i)
+                    flag = True
+                else:
+                    rlist.append(i)
+            elif type(i) is ParenBlock:
+                if flag:
+                    group.append(i)
+                else:
+                    rlist.append(i)
+            elif type(i) is Block:
+                if flag:
+                    group.append(i)
+                    if len(group) == 2:
+                        name: Word= group[0]
+                        block: Block = group[1]
+                        rlist.append(
+                            Syntax(
+                                name.get_contents(),
+                                None,
+                                block.get_contents()
+                            )
+                        )
+                    elif len(group) == 3:
+                        name:Word=group[0]
+                        paren:ParenBlock = group[1]
+                        block:Block = group[2]
+                        rlist.append(
+                            Syntax(
+                                name.get_contents(),
+                                paren.get_contents(),
+                                block.get_contents()
+                            )
+                        )
+                    else:
+                        print("ここでError!",group)
+                        return
+                    group.clear()
+                    flag = False
+                else:
+                    rlist.append(i)
+            else:
+                rlist.append(i)
+        return rlist
+            
+
+    def grouping_syntax2(self,vec:list) -> list:
+        pass
 
     def is_symbol(self,index:int,vec:list) -> tuple[bool,str,int]:
         pass
@@ -187,7 +244,11 @@ class Expr_parser:
         codelist = self.grouping_words(
             codelist,
             split = [' ', '\t', '\n'],
-            excludes = [';', ':', '.']
+            excludes = [';', ':']
+        )
+        codelist = self.grouping_syntax(
+            codelist,
+            syntax_words=["if", "elif", "else", "loop", "for", "while"]
         )
         # codelist = self.split_symbol(codelist)
         return codelist
@@ -300,6 +361,10 @@ class Syntax(Elem):
 
     def get_expr(self):
         return self.expr
+    
+    def __repr__(self):
+        # override
+        return f"<{type(self).__name__} name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
 
 
 # Proc_parser
