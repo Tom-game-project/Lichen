@@ -9,26 +9,6 @@ import copy
 logging.basicConfig(level=logging.DEBUG)
 
 
-class Object_tag(Enum):
-    """
-    # Object tag
-    """
-    # 未定義
-    UNDEF = auto()
-    # 文字列
-    STRING = auto()    # a-zA-Z
-    # block
-    SQBLOCK = auto()   # []
-    PARENBLOCK = auto()# ()
-    BLOCK = auto()     # {}
-    # 式
-    EXPR = auto()
-    # 制御文法
-    CONTROL = auto()
-    # 単語
-    WORD = auto()
-
-
 class parser:
     # resolve <expr>
     # 式を解決します
@@ -247,13 +227,11 @@ class parser:
                 rlist.append(i)
         return rlist
     
-    def grouping_call(self,vec:list,block,ObjectInstance:"Elem") -> list:
+    def grouping_functioncall(self,vec:list,block,ObjectInstance:"Elem") -> list:
         """
         # grouping_call
         ## group function calls
-        grouping_call(vec,Parenblock,Func) -> list:
-        ## group list call
-        grouping_call(vec,Listblock,List) -> list:
+        grouping_call(vec,[Word],Parenblock,Func) -> list:
         """
         flag:bool = False
         name_tmp:Word = None
@@ -285,6 +263,82 @@ class parser:
                     rlist.append(i)
         if flag:
             rlist.append(name_tmp)
+        return rlist
+
+    def grouping_list(self,vec:list["Elem"],pre_flag:list,block:"Elem",ObjectInstance:"Elem") -> list:
+        """
+        ## group list call
+        grouping_call(vec,[Word,ListBlock,Func,Syntax],Listblock,List) -> list: 
+        返り値があるようなElemについてすべてindexを指定することは可能である
+        <List>:
+            <name>[<expr>]                     ex) arr[0]
+            <Func>[<expr>]                     ex) arr_gen()[0]
+            (ListData:[<expr>,...])[<expr>]    ex) [0,1,2][a]
+            <syntax> [<expr>]                  ex) if (a){[0,1]}else{[1,0]}[a]
+        多次元配列の場合
+            <List>[<expr>]                     ex) arr[0][0][0]
+
+        想定される関数の使い方
+        ```python
+        grouping_list(codelist,[Word,Func,ListBlock,Syntax], ListBlock                 , List) -> list:
+        #            (        ,直前にpreflagのいずれか     , 直後にListBlockがあれば   , List) としてまとめる
+        ```
+        """
+        flag:bool = False
+        expr:str = None
+        group:list = list() # index格納用
+        rlist:list = list()
+        for i in vec:
+            if type(i) is ListBlock: # もし、[]を見つけたなら
+                if flag:
+                    group.append(i)
+                else:
+                    expr = i
+                    flag = True
+            elif any(map(lambda a:type(i) is a,pre_flag)):
+                if flag:
+                    # すでにflagが立っている場合
+                    if group or expr is not None: # something in group or expr
+                        rlist += [expr] + group
+                        group.clear()
+                    else: # group is empty and expr is None
+                        pass
+                
+                expr = i
+                flag = True
+            else: # flagを下げるべきとき
+                if flag:
+                    if group:
+                        rlist.append(List(expr,copy.copy(group)))
+                        expr = None
+                        group.clear()
+                    else:
+                        rlist.append(expr)
+                        expr = None
+                else:
+                    # flagは立っていないとき
+                    if group or expr is not None:
+                        # list Call かと予想したものの、そうでなかった場合
+                        # flag は立っていないけど、groupの中身が存在していて
+                        # exprもNoneではない場合
+                        rlist += [expr] + group
+                        group.clear()
+                        expr = None
+                    else: # group is empty and expr is None)
+                        pass
+                flag = False
+                rlist.append(i)
+        if group or expr is not None:# なにか、残っている場合
+            if flag:
+                if group:
+                    rlist.append(List(expr,copy.copy(group)))
+                    expr = None
+                    group.clear()
+                else:
+                    rlist.append(expr)
+                    expr = None
+            else:
+                rlist += [expr] + group
         return rlist
 
     def find_ope_from_list(self, text:str, ordered_opelist:list[str]) -> str:
@@ -348,9 +402,10 @@ class parser:
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
-        codelist = self.grouping_call(codelist,ParenBlock,Func)
+        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
         ## listの呼び出しをまとめる
-        codelist = self.grouping_call(codelist,ListBlock,List)
+        codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
+        
         # TODO:もし配列モードであればここでカンマ区切りの処理をする
         # ここで初めて演算子をまとめる
         codelist = self.grouping_operator(codelist,self.length_order_ope_list)
@@ -459,16 +514,32 @@ class Func(Elem):
 
     def __repr__(self):
         return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
-    
+
 class List(Elem):
     """
-    <name>[<expr>,...]
+    # List 
+    ## index呼び出しは少し複雑である
+    
+    返り値があるようなElemについてすべてindexを指定することは可能である
+    <List>:
+        <name>[<expr>]                     ex) arr[0]
+        <Func>[<expr>]                     ex) arr_gen()[0]
+        (ListData:[<expr>,...])[<expr>]    ex) [0,1,2][a]
+        <syntax> [<expr>]                  ex) if (a){[0,1]}else{[1,0]}[a]
+    多次元配列の場合
+        <List>[<expr>]                     ex) arr[0][0][0]
+
     # returns
     get_contents -> (index:[<expr,...>])
     get_name -> (listname:<name>)
     """
-    def __init__(self, name: str, contents: str) -> None:
-        super().__init__(name, contents)
+    def __init__(self, expr: str, index: list[ListBlock]) -> None:
+        super().__init__(None, None)
+        self.expr = expr
+        self.index_list = index
+
+    def __repr__(self):
+        return f"<{type(self).__name__} expr:({self.expr}) index:({self.index_list})>"
 
 class Operator(Elem):
     """
@@ -510,11 +581,9 @@ class Expr_parser(parser): # 式について解決します
     """
     # expressions resolver
     ## 式について解決します
-
-        """
+    """
     def __init__(self, code: str, mode="lisp") -> None:
         super().__init__(code, mode)
-    
 
 
 class State_parser(parser): # 文について解決します
@@ -654,7 +723,7 @@ def __test_03():
         "x^3+x^2+3",
         "2*cube(x)+3*squared(x)+3",
         "10<=d<100",
-        "a[0]+b[0] * c[0]",
+        "a[0][0]+a[0][1] * arr(a)[0][2] * if (expr) { [0,1] } else{ [1,0] } [0]",
     ]
 
     a = Expr_parser("") #constract expr parser
