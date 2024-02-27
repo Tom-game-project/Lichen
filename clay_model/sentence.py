@@ -118,6 +118,10 @@ class parser:
 
     # grouping methods
     def grouping_elements(self,vec:list,open_char:str,close_char:str,ObjectInstance:"Elem") -> list:
+        """
+        # grouping_elements 
+        grouping block listblock parenblock
+        """
         rlist:list[str] = list()
         group:list[str] = list()
         depth:int = 0
@@ -189,6 +193,10 @@ class parser:
         return rlist
     
     def grouping_syntax(self,vec:list,syntax_words:list[str]) -> list:
+        """
+        # grouping_syntax
+        group "if" "elif" "else" "for" "while" ...
+        """
         flag:bool = False
         group:list = list()
         rlist:list = list()
@@ -239,7 +247,14 @@ class parser:
                 rlist.append(i)
         return rlist
     
-    def grouping_function(self,vec:list) -> list:
+    def grouping_call(self,vec:list,block,ObjectInstance:"Elem") -> list:
+        """
+        # grouping_call
+        ## group function calls
+        grouping_call(vec,Parenblock,Func) -> list:
+        ## group list call
+        grouping_call(vec,Listblock,List) -> list:
+        """
         flag:bool = False
         name_tmp:Word = None
         rlist:list = list()
@@ -249,10 +264,10 @@ class parser:
                     rlist.append(name_tmp)
                 name_tmp  = i
                 flag = True
-            elif type(i) is ParenBlock:
+            elif type(i) is block:
                 if flag:
                     rlist.append(
-                        Func(
+                        ObjectInstance(
                             name_tmp.get_contents(),# func name
                             i.get_contents(),       # args
                     ))
@@ -333,7 +348,9 @@ class parser:
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
-        codelist = self.grouping_function(codelist)
+        codelist = self.grouping_call(codelist,ParenBlock,Func)
+        ## listの呼び出しをまとめる
+        codelist = self.grouping_call(codelist,ListBlock,List)
         # TODO:もし配列モードであればここでカンマ区切りの処理をする
         # ここで初めて演算子をまとめる
         codelist = self.grouping_operator(codelist,self.length_order_ope_list)
@@ -442,6 +459,16 @@ class Func(Elem):
 
     def __repr__(self):
         return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
+    
+class List(Elem):
+    """
+    <name>[<expr>,...]
+    # returns
+    get_contents -> (index:[<expr,...>])
+    get_name -> (listname:<name>)
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
 
 class Operator(Elem):
     """
@@ -456,21 +483,69 @@ class Operator(Elem):
     def __repr__(self):
         return f"<{type(self).__name__} ope:({self.ope})>"
 
+## function declaration
+class DecFunc(Elem):
+    """
+    関数の宣言部分
+    (pub) fn <name><parenblock>:<type> <block>
+    """
+    def __init__(self, funcname:str,args:list,return_type, contents: str) -> None:
+        super().__init__(funcname, contents)
+        self.return_type = return_type
+        self.args = args
+    
+    def __repr__(self):
+        return f"<{type(self).__name__} funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+
+class DecValue(Elem):
+    """
+    変数の宣言
+    (pub)(const|let) <name>:<type> = <expr>;
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+    
 
 class Expr_parser(parser): # 式について解決します
     """
     # expressions resolver
-    """
+    ## 式について解決します
+
+        """
     def __init__(self, code: str, mode="lisp") -> None:
         super().__init__(code, mode)
+    
 
 
 class State_parser(parser): # 文について解決します
     """
     # statement resolver
+    ## 宣言文について解決します
+    # ここで解決すべき問題
+    TODO 柔軟な型を表現する
+    TODO Parenblock内の引数宣言ex) (a:i32,b:i32)
+    TODO 変数宣言時の明示的な型宣言 a:Vec<i32>
     """
     def __init__(self, code: str, mode="lisp") -> None:
         super().__init__(code, mode)
+        self.object_type = [
+            "i32",
+            "i64",
+            "f32",
+            "f64",
+        ]
+    
+    def grouping_decfunc(self,vec:list) -> list:
+        """
+        関数宣言部についてまとめます
+        (pub) fn <name><parenblock>:<type> <block>
+        """
+        flag:bool = False
+        group:list = list()
+        rlist:list = list()
+        for i in vec:
+            pass
+        return rlist
 
 # test
 
@@ -511,9 +586,13 @@ def __test_02():
     """
     a = parser("")
     # expr test cases
-    test_cases = [
+    statement_test_cases = [
 """
-for (i <- list){
+pub fn add(a:i32,b:i32):i32
+{
+    return a + b;
+}
+const a = for (i <- list){
     const flag = string==i;
     if (if (flag){1} else {0}){
         const a = "hello" + "world";
@@ -524,28 +603,68 @@ for (i <- list){
 """
 loop {
     print("hello");
-}
+};
 """,
-    " 10 + ( x + log10(2) * sin(x) ) * log10(x)",
-    "(-sin(x)*3)+(-2*cos(x))",
-    "pi",
-    "sin(x)",
-    "(1)+2",
-    "3.14",
-    "-812+42",
-    "a / b*(c+d)",
-    "a / (b*(c+d))",
-    "a*a*a",
-    "x^3+x^2+3",
-    "2*cube(x)+3*squared(x)+3",
-    "10<=d<100"
     ]
-    for testcase in test_cases:
+    for testcase in statement_test_cases:
         codelist = a.code2vec(testcase)
         print(testcase)
         pprint(codelist)
         print()
 
+def __test_03():
+    """
+    # __test_03
+    ## expr test
+
+    """
+    expr_test_cases=[
+        """
+        0 <= if (i % 2 == 0)
+        {
+            return i/2;
+        }
+        else
+        {
+            i*3 + 1
+        } + add(1,2,3)
+        """,
+        """
+        for (i <- range(10))
+        {
+            print("hello world");
+            print("hello world");
+            j += i
+        }
+        else
+        {
+            return j;
+        } + add(1 , 1)
+        """,
+        " 10 + ( x + log10(2) * sin(x) ) * log10(x)",
+        "(-sin(x)*3)+(-2*cos(x))",
+        "pi",
+        "sin(x)",
+        "(1)+2",
+        "3.14",
+        "-812+42",
+        "a / b*(c+d)",
+        "a / (b*(c+d))",
+        "a*a*a",
+        "x^3+x^2+3",
+        "2*cube(x)+3*squared(x)+3",
+        "10<=d<100",
+        "a[0]+b[0] * c[0]",
+    ]
+
+    a = Expr_parser("") #constract expr parser
+    for testcase in expr_test_cases:
+        codelist = a.code2vec(testcase)
+        print(testcase)
+        pprint(codelist)
+        print()
 
 if __name__=="__main__":
-    __test_02()
+    # __test_02()
+    __test_03()
+
