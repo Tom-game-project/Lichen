@@ -602,6 +602,7 @@ def __test_00():
     "a*a*a",
     "x^3+x^2+3",
     "2*cube(x)+3*squared(x)+3"
+    "2 ** -1"
     ]
     """
     texts = [
@@ -650,7 +651,8 @@ def __test_03():
         "gcd(b,a % b)",
         "sqrt(x**2+y**2)",
         "1+1+1 == -(1+1)",
-        "0< index + i <= size"
+        "0< index + i <= size",
+        "2**-1"
     ]
     for i in test_case:
         par:parser = parser(i,mode="PM")

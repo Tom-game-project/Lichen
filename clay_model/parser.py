@@ -18,7 +18,8 @@ class parser:
 
         # setting
         ## <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
-        self.rankinglist:dict = {
+        # 左優先
+        self.left_priority_list:dict = {
             # 演算子優先順位
             "&&":-1,"||":-1,
 
@@ -30,11 +31,13 @@ class parser:
 
             "*":2,"/":2,
             "%":2,"@":2,
-
+        }
+        # 右優先
+        self.right_priority_list:dict = {
             "^":3,"**":3
         }
         # TODO: 前置修飾(prefix)たとえば!(not)を解決する必要がある
-        self.length_order_ope_list = sorted(self.rankinglist.keys(),key=lambda a:len(a))[::-1]
+        self.length_order_ope_list = sorted(list(self.left_priority_list.keys())+list(self.right_priority_list.keys()),key=lambda a:len(a))[::-1]
         self.blocks = [
             ('{','}',Block),
             ('[',']',ListBlock),
@@ -146,7 +149,7 @@ class parser:
         """
         rlist:list = list()
         group:list = list()
-        ope_chars:str = ''.join(self.rankinglist.keys())
+        ope_chars:str = ''.join(self.left_priority_list.keys()) + ''.join(self.right_priority_list.keys())
         ope_chars = ope_chars + ''.join(excludes)
         for i in vec:
             if isinstance(i,Elem):# Elemクラスを継承しているかどうか調べる
@@ -352,26 +355,53 @@ class parser:
                 return text
         return None
 
-    def grouping_operator(self,vec:list,ordered_opelist:list[str]):
+    def grouping_operator_unit(self,vec:list,ope:str):
         """
-        opeは長い順に並んでいる必要があります ex) ["<<<","<<","<"]
+        grouping_operatorの中で内部的に使うことを想定しているmethod
         """
-        group:list = list()
-        rlist:list = list()
+        group = list()
+        rlist = list()
+        ope_size = len(ope)
         for i in vec:
             if not isinstance(i,Elem):
-                # ここに来てもまだ、Elemインスタンスでない(すなわち、まだ未定の場合)
                 group.append(i)
-            else:
-                if group:
-                    ope =''.join(group) 
-                    ope_text = self.find_ope_from_list(ope, ordered_opelist)
-                    if ope_text is None:
-                        rlist += group # concat
-                    else:
+                ope_tmp = ''.join(group)
+                if len(group) < ope_size:
+                    pass
+                elif ope_size == len(group):
+                    if ope_tmp == ope:
                         rlist.append(Operator(ope))
+                    else:
+                        rlist += group
+                    group.clear()
+                else:# ope_size < len(group)
+                    rlist += group
+                    group.clear()
+            else:
+                ope_tmp = ''.join(group)
+                if len(group) < ope_size:
+                    rlist += group
+                    group.clear()
+                elif ope_size == len(group):
+                    if ope_tmp == ope:
+                        rlist.append(Operator(ope))
+                    else:
+                        rlist += group
+                    group.clear()
+                else:# ope_size < len(group)
+                    rlist += group
                     group.clear()
                 rlist.append(i)
+        return rlist
+
+    def grouping_operator(self,vec:list,ordered_opelist:list[str]):
+        """
+        # grouping_operator2
+        ## 2** -1
+        """
+        rlist:list = copy.copy(vec)
+        for i in ordered_opelist:
+            rlist = self.grouping_operator_unit(rlist,i)
         return rlist
 
     def is_number(self,text:str) -> bool:
@@ -388,9 +418,6 @@ class parser:
             else:
                 return False
         return True
-
-    def split_symbol(self,vec:list[str]) -> list[str]:
-        pass
 
     def code2vec(self,code:str) ->list[str]:
         # クォーテーションをまとめる
@@ -410,7 +437,17 @@ class parser:
         # ここで初めて演算子をまとめる
         codelist = self.grouping_operator(codelist,self.length_order_ope_list)
         return codelist
-
+    
+    def resolve_operation(self):
+        """
+        # resolve_operation 
+        ここではそれぞれの演算子の優先順序に従い計算を行う
+        演算子は引数を２つ取る関数とみなす 1 + 2 -> add(1,2)
+        - TODO 右側優先(**)、左側優先区別
+        - 2 ** -1のような場合
+        """
+        
+        pass# 順位
 
 # Base Elem
 class Elem:
@@ -713,6 +750,7 @@ def __test_03():
         " 10 + ( x + log10(2) * sin(x) ) * log10(x)",
         "(-sin(x)*3)+(-2*cos(x))",
         "pi",
+        "gcd(a,b)",
         "sin(x)",
         "(1)+2",
         "3.14",
@@ -733,7 +771,23 @@ def __test_03():
         pprint(codelist)
         print()
 
+def __test_04():
+    expr_test_cases = [
+        "a / (b*(c+d))",
+        "2*cube(x)+3*squared(x)+3",
+        "a*b*c",
+        "!f(a,b)",
+        "2** -1"
+    ]
+    
+    a = Expr_parser("")
+    for testcase in expr_test_cases:
+        codelist = a.code2vec(testcase)
+        print("sample expr:",testcase)
+        pprint(codelist)
+        print()
+
 if __name__=="__main__":
     # __test_02()
-    __test_03()
+    __test_04()
 
