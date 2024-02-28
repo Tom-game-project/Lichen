@@ -5,3 +5,9 @@
 # ignore notes
 note*.md
 wasm/ex*/*.wasm
+
+# ignore all __pycache__
+**/__pycache__/**
+
+# ignore .vscode
+/.vscode
