@@ -6,7 +6,7 @@ def __test_00():
     pass
 
 def __test_01():
-    a = parser.parser("")
+    a = parser.Parser("")
     # expr test cases
     test_cases:list = list()
     with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
@@ -23,7 +23,7 @@ def __test_02():
 
     
     """
-    a = parser.parser("")
+    a = parser.Parser("")
     # expr test cases
     statement_test_cases = [
 """
@@ -118,6 +118,7 @@ def __test_04():
         codelist = a.code2vec(testcase)
         print("sample expr:",testcase)
         pprint(codelist)
+        print("minimun priority index:",a.find_min_priority_index(codelist))
         print()
 
 if __name__=="__main__":

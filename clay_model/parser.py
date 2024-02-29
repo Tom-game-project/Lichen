@@ -1,15 +1,12 @@
+"""
+# Lichen parser cray model
+Class parser
+"""
 from enum import Enum,auto
-
-# debug tools
-from pprint import pprint
-import logging
 import copy
 
 
-logging.basicConfig(level=logging.DEBUG)
-
-
-class parser:
+class Parser:
     # resolve <expr>
     # 式を解決します
     def __init__(self, code:str, mode = "lisp") -> None:
@@ -18,10 +15,12 @@ class parser:
 
         # setting
         ## <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
-        # 左優先
+        ## 左優先リスト
         self.left_priority_list:dict = {
             # 演算子優先順位
-            "&&":-1,"||":-1,
+
+            "||":-3,
+            "&&":-2,
 
             "==":0,"!=":0,
             "<":0,">":0,
@@ -32,12 +31,20 @@ class parser:
             "*":2,"/":2,
             "%":2,"@":2,
         }
-        # 右優先
+        ## 右優先リスト
         self.right_priority_list:dict = {
-            "^":3,"**":3
+            "**":3
         }
-        # TODO: 前置修飾(prefix)たとえば!(not)を解決する必要がある
-        self.length_order_ope_list = sorted(list(self.left_priority_list.keys())+list(self.right_priority_list.keys()),key=lambda a:len(a))[::-1]
+        ## 前置修飾 優先リスト
+        self.prefix_priority_list:dict = {
+            "!": -1
+        }
+        self.length_order_ope_list = sorted(
+            list(self.left_priority_list.keys())+\
+            list(self.right_priority_list.keys())+\
+            list(self.prefix_priority_list.keys()),
+            key=lambda a:len(a))[::-1]
+        self.min_priority_operation:int = max((self.left_priority_list | self.right_priority_list | self.prefix_priority_list).values())
         self.blocks = [
             ('{','}',Block),
             ('[',']',ListBlock),
@@ -437,8 +444,65 @@ class parser:
         # ここで初めて演算子をまとめる
         codelist = self.grouping_operator(codelist,self.length_order_ope_list)
         return codelist
-    
-    def resolve_operation(self):
+
+    def __find_ope_proority(self,ope:str) -> tuple[str,int]:
+        """
+        # __find_ope_proority
+        ## このメソッドは、与えられた演算子の優先順序と右優先左優先前置修飾の区別をします
+
+        """
+        if ope in self.left_priority_list:
+            return ("left", self.left_priority_list[ope])
+        elif ope in self.right_priority_list:
+            return ("right", self.right_priority_list[ope])
+        elif ope in self.prefix_priority_list:
+            return ("prefix",self.prefix_priority_list[ope])
+        else:
+            raise BaseException("invalid operation")
+
+    def find_min_priority_index(self,vec:list) -> int:
+        """
+        # find_min_priority
+        このメソッドはresolve_operation内で使用すること
+        return index of minimum priority
+        最も優先順位の低いものを発見する
+        ```
+        a+b+c
+         0 1
+        ((a b +) c +)
+              0    1
+        すなわち、
+        (a + b) + c と解釈したいので
+        １を見つけたい
+        すなわち、
+        その式の中で最も計算順位の低いものを発見したい
+        ```
+        # returns 
+        最も優先順位の低い演算子のindexを返却する
+        """
+        priority_tmp:int = self.min_priority_operation + 1 # 最初は優先順位表の最大値 + 1
+        index_tmp = None
+        for i,j in enumerate(vec):
+            if type(j) is Operator:
+                contents = j.get_contents()
+                # priority_direction : "left"|"right"|"prefix"
+                (priority_direction,priority) = self.__find_ope_proority(contents)
+                if priority < priority_tmp:
+                    index_tmp = i
+                    priority_tmp = priority
+                elif priority == priority_tmp:
+                    if priority_direction == "left":
+                        index_tmp = i
+                        priority_tmp = priority
+                    else: # "right" or "prefix"
+                        pass
+                else: # priority > priority_tmp
+                    pass
+            else: # type(j) is not Operator
+                pass
+        return index_tmp
+
+    def resolve_operation(self,vec:list) -> list: # 式を計算順序に従い解決するmethodです
         """
         # resolve_operation 
         ここではそれぞれの演算子の優先順序に従い計算を行う
@@ -446,8 +510,11 @@ class parser:
         - TODO 右側優先(**)、左側優先区別
         - 2 ** -1のような場合
         """
-        
-        pass# 順位
+        pre_group:list = list() 
+        post_group:list = list() 
+        rlist:list = list() 
+        for i in vec:
+            pass
 
 # Base Elem
 class Elem:
@@ -466,6 +533,7 @@ class Elem:
 
 
 ## Elements
+### basic elements
 class Block(Elem):
     """
     処理集合を格納
@@ -591,7 +659,7 @@ class Operator(Elem):
     def __repr__(self):
         return f"<{type(self).__name__} ope:({self.ope})>"
 
-## function declaration
+### function declaration
 class DecFunc(Elem):
     """
     関数の宣言部分
@@ -614,7 +682,7 @@ class DecValue(Elem):
         super().__init__(name, contents)
     
 
-class Expr_parser(parser): # 式について解決します
+class Expr_parser(Parser): # 式について解決します
     """
     # expressions resolver
     ## 式について解決します
@@ -623,7 +691,7 @@ class Expr_parser(parser): # 式について解決します
         super().__init__(code, mode)
 
 
-class State_parser(parser): # 文について解決します
+class State_parser(Parser): # 文について解決します
     """
     # statement resolver
     ## 宣言文について解決します
