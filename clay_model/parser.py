@@ -2,7 +2,6 @@
 # Lichen parser cray model
 Class parser
 """
-from enum import Enum,auto
 import copy
 
 
@@ -44,7 +43,11 @@ class Parser:
             list(self.right_priority_list.keys())+\
             list(self.prefix_priority_list.keys()),
             key=lambda a:len(a))[::-1]
-        self.min_priority_operation:int = max((self.left_priority_list | self.right_priority_list | self.prefix_priority_list).values())
+        self.min_priority_operation:int = max(
+            (self.left_priority_list |\
+            self.right_priority_list |\
+            self.prefix_priority_list).values()
+            )
         self.blocks = [
             ('{','}',Block),
             ('[',']',ListBlock),
@@ -241,7 +244,9 @@ class Parser:
         """
         # grouping_call
         ## group function calls
+        ```python
         grouping_call(vec,[Word],Parenblock,Func) -> list:
+        ```
         """
         flag:bool = False
         name_tmp:Word = None
@@ -411,20 +416,25 @@ class Parser:
             rlist = self.grouping_operator_unit(rlist,i)
         return rlist
 
-    def is_number(self,text:str) -> bool:
-        size = len(text)
-        for i,j in enumerate(text):
-            if i == 0 and j=='.':
-                # ex) .141592
-                return False
-            if i == size - 1 and j=='.':
-                # ex) 3.
-                return False
-            elif '0' <= j <= '9':
-                pass
+    # comma_spliter
+    def comma_spliter(self,vec:list) -> "Data":
+        """
+        # comma_spliter 
+        (a,b,c,) == (a,b,c)
+        [a,b,c,] == (a,b,c)
+        ## 各要素を式として処理する
+        """
+        group:list = list()
+        rlist:list = list()
+        for i in vec:
+            if i == ',':
+                rlist.append(copy.copy(group))
+                group.clear()
             else:
-                return False
-        return True
+                group.append(i)
+        if group: # last elements if comma does not exist
+            rlist.append(group)
+        return Data(rlist)
 
     def code2vec(self,code:str) ->list[str]:
         # クォーテーションをまとめる
@@ -442,12 +452,14 @@ class Parser:
         
         # TODO:もし配列モードであればここでカンマ区切りの処理をする
         # ここで初めて演算子をまとめる
-        codelist = self.grouping_operator(codelist,self.length_order_ope_list)
+        # codelist = self.grouping_operator(codelist,self.length_order_ope_list)
+        # codelist = self.resolve_operation(codelist)
+        codelist = self.comma_spliter(codelist)
         return codelist
 
-    def __find_ope_proority(self,ope:str) -> tuple[str,int]:
+    def __find_ope_priority(self,ope:str) -> tuple[str,int]:
         """
-        # __find_ope_proority
+        # __find_ope_priority 
         ## このメソッドは、与えられた演算子の優先順序と右優先左優先前置修飾の区別をします
 
         """
@@ -486,7 +498,7 @@ class Parser:
             if type(j) is Operator:
                 contents = j.get_contents()
                 # priority_direction : "left"|"right"|"prefix"
-                (priority_direction,priority) = self.__find_ope_proority(contents)
+                (priority_direction,priority) = self.__find_ope_priority(contents)
                 if priority < priority_tmp:
                     index_tmp = i
                     priority_tmp = priority
@@ -510,11 +522,17 @@ class Parser:
         - TODO 右側優先(**)、左側優先区別
         - 2 ** -1のような場合
         """
-        pre_group:list = list() 
-        post_group:list = list() 
-        rlist:list = list() 
-        for i in vec:
-            pass
+        operation_index:int = self.find_min_priority_index(vec)
+        if operation_index is not None: # if operation not found
+            pre_group:list = vec[: operation_index]
+            post_group:list = vec[operation_index + 1:]
+            return Func(
+                vec[operation_index], # operation name (func name)
+                [pre_group,post_group]# operation args (func args)
+            )
+        else:
+            return vec
+
 
 # Base Elem
 class Elem:
@@ -610,12 +628,14 @@ class Syntax(Elem):
 
 class Func(Elem):
     """
+    # TODO:resolve args
+    srgs:[<expr>,...]のような形を期待する
     <name(excludes: 0-9)>(<expr>,...)
     # returns
     get_contents -> (srgs:[<expr>,...])
     get_name -> (funcname: <name>)
     """
-    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+    def __init__(self, name: str, contents: list) -> None:super().__init__(name, contents)
 
     def __repr__(self):
         return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
@@ -659,6 +679,23 @@ class Operator(Elem):
     def __repr__(self):
         return f"<{type(self).__name__} ope:({self.ope})>"
 
+class Data(Elem):
+    """
+    # Data
+    カンマ区切りのデータに対して処理を行います。
+    """
+    def __init__(self,data:list) -> None:
+        super().__init__(None,None)
+        self.data:list = data
+
+    def get_data(self):
+        return self.data
+
+    def __repr__(self):
+        text:str = ""
+        for i in self.data:text += repr(i) + ",\n"
+        return f"<{type(self).__name__} data:({text})>"
+
 ### function declaration
 class DecFunc(Elem):
     """
@@ -689,6 +726,25 @@ class Expr_parser(Parser): # 式について解決します
     """
     def __init__(self, code: str, mode="lisp") -> None:
         super().__init__(code, mode)
+
+    def code2vec(self,code:str) ->list[str]:
+        # クォーテーションをまとめる
+        codelist = self.resolve_quotation(code, "\"")
+        # ブロック、リストブロック、パレンブロック Elemをまとめる
+        for i in self.blocks:codelist = self.grouping_elements(codelist, *i)
+        # Wordをまとめる
+        codelist = self.grouping_words(codelist, self.split, self.word_excludes)
+        ## if, elif, else, forをまとめる
+        codelist = self.grouping_syntax(codelist, self.syntax_words)
+        ## functionの呼び出しをまとめる
+        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+        ## listの呼び出しをまとめる
+        codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
+        ## 演算子をまとめる
+        codelist = self.grouping_operator(codelist,self.length_order_ope_list)
+        ## 演算子を解決する
+        codelist = self.resolve_operation(codelist)
+        return codelist
 
 
 class State_parser(Parser): # 文について解決します
