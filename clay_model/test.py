@@ -107,20 +107,24 @@ def __test_03():
 def __test_04():
     expr_test_cases = [
         "func()",
-        "print(\"hello world\")",
+        "print(hello[0],\"world\"+\"!\")",
         "a / (b*(c+d))",
         "2*cube(x)+3*squared(x)+3",
         "a*b*c",
+        "a + b * c",
+        "-a + -c",
         "a**b**c",
         "a[0]**b[0][1]**c[0][1][2]",
         "!f(a,b)",
         "2** -1",
+        "2**-1**-1 - 1 - 1", # (2**(-(1**(-1)))) -1-1
         "if (expr){return 1;}else{return 0;} + loop {break 4;}"
     ]
     
     a = parser.Expr_parser("")
-    for testcase in expr_test_cases:
+    for i,testcase in enumerate(expr_test_cases):
         codelist = a.code2vec(testcase)
+        print(i)
         print("sample expr:",testcase)
         pprint(codelist)
         # print("minimun priority index:",a.find_min_priority_index(codelist))
@@ -150,4 +154,4 @@ def __test_05():
 
 if __name__=="__main__":
     # __test_02()
-    __test_05()
+    __test_04()

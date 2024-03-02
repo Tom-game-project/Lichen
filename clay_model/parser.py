@@ -25,7 +25,7 @@ class Parser:
             "<":0,">":0,
             "<=":0,">=":0,
 
-            "+":1,"-":1,
+            "+":1,"-":1, # prefixの場合は優先順序が変わる
 
             "*":2,"/":2,
             "%":2,"@":2,
@@ -38,13 +38,14 @@ class Parser:
         self.prefix_priority_list:dict = {
             "!": -1
         }
-        self.length_order_ope_list = sorted(
-            list(self.left_priority_list.keys())+\
-            list(self.right_priority_list.keys())+\
-            list(self.prefix_priority_list.keys()),
+        self.plusminus_prefix_priority = 4
+        self.length_order_ope_list:list = sorted((
+            self.left_priority_list|\
+            self.right_priority_list|\
+            self.prefix_priority_list).keys(),
             key=lambda a:len(a))[::-1]
-        self.min_priority_operation:int = max(
-            (self.left_priority_list |\
+        self.min_priority_operation:int = max((
+            self.left_priority_list |\
             self.right_priority_list |\
             self.prefix_priority_list).values()
             )
@@ -262,7 +263,7 @@ class Parser:
                     rlist.append(
                         ObjectInstance(
                             name_tmp.get_contents(),# func name
-                            i.get_contents(),       # args
+                            self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
                     ))
                     name_tmp = None
                     flag = False
@@ -434,7 +435,7 @@ class Parser:
                 group.append(i)
         if group: # last elements if comma does not exist
             rlist.append(group)
-        return Data(rlist)
+        return rlist
 
     def code2vec(self,code:str) ->list[str]:
         # クォーテーションをまとめる
@@ -461,7 +462,7 @@ class Parser:
         """
         # __find_ope_priority 
         ## このメソッドは、与えられた演算子の優先順序と右優先左優先前置修飾の区別をします
-
+        このメソッドは+,-が前置修飾的に使われていることを判断できない
         """
         if ope in self.left_priority_list:
             return ("left", self.left_priority_list[ope])
@@ -486,7 +487,13 @@ class Parser:
         すなわち、
         (a + b) + c と解釈したいので
         １を見つけたい
-        すなわち、
+        a+b*c
+         0
+        (a (b c *) +)
+        -1+-4
+        ((1 -) (4 -) +)
+        -42
+        (42 -)
         その式の中で最も計算順位の低いものを発見したい
         ```
         # returns 
@@ -499,28 +506,47 @@ class Parser:
                 contents = j.get_contents()
                 # priority_direction : "left"|"right"|"prefix"
                 (priority_direction,priority) = self.__find_ope_priority(contents)
-                if priority < priority_tmp:
+                if i - 1 < 0: # 更新
                     index_tmp = i
-                    priority_tmp = priority
-                elif priority == priority_tmp:
-                    if priority_direction == "left":
+                    priority_tmp = self.plusminus_prefix_priority
+                elif type(vec[i - 1]) is Operator: # jは単項前置演算子
+                    pass
+                else:
+                    if priority < priority_tmp: # 更新
                         index_tmp = i
                         priority_tmp = priority
-                    else: # "right" or "prefix"
+                    elif priority == priority_tmp:
+                        if priority_direction == "left": # 更新
+                            index_tmp = i
+                            priority_tmp = priority
+                        else: # "right" or "prefix"
+                            pass
+                    else: # priority > priority_tmp
                         pass
-                else: # priority > priority_tmp
-                    pass
             else: # type(j) is not Operator
                 pass
         return index_tmp
+    
+    def find_special_prefix(self):
+        """
+        # find_special_prefix
+        
+        """
+        pass
 
     def resolve_operation(self,vec:list) -> list: # 式を計算順序に従い解決するmethodです
         """
         # resolve_operation 
         ここではそれぞれの演算子の優先順序に従い計算を行う
         演算子は引数を２つ取る関数とみなす 1 + 2 -> add(1,2)
-        - TODO 右側優先(**)、左側優先区別
-        - 2 ** -1のような場合
+        - TODO 2 ** -1のような場合
+        ```
+        -1**-1**-1
+        -(1**-1**-1)
+        -(1**(-(1**-1)))
+        -(1**(-(1**(-1))))
+        ```
+        prefix(前置修飾) +,-をどう扱うか
         """
         operation_index:int = self.find_min_priority_index(vec)
         if operation_index is not None: # if operation not found
