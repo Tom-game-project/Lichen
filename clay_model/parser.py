@@ -65,6 +65,7 @@ class Parser:
         ]
         # const
         self.ESCAPESTRING = "\\"
+        self.FUNCTION = "fn"
 
     # クォーテーションはまとまっている前提
     def resolve_quotation(self,code:str,quo_char:str) -> list[str]:
@@ -416,6 +417,42 @@ class Parser:
             rlist = self.grouping_operator_unit(rlist,i)
         return rlist
 
+    def grouping_decfunc(self,vec:list["Elem"]) -> list:
+        """
+        # grouping_decfunc 
+        関数宣言部分を切り分けます
+        """
+        flag:bool = False
+        return_type_flag:bool = False
+        func_name:str = None
+        func_args:list = list()
+        rtype_group:list = list()
+        rlist:list = list()
+        for i in vec:
+            if type(i) is Word:
+                if i.get_contents() == self.FUNCTION:
+                    flag = True
+                elif return_type_flag:
+                    rtype_group.append(i)
+                else:
+                    rlist.append(i)
+            elif type(i) is Func and flag:
+                func_name = i.get_name()
+                func_args = i.get_contents()
+            elif flag and  type(i) is Block:
+                rlist.append(DecFunc( func_name, copy.copy(func_args), copy.copy(rtype_group), i, pub_flag = False))
+                flag = False
+                return_type_flag = False
+                rtype_group.clear()
+                func_args.clear()
+            elif type(i) is str and i == ":" and flag:
+                return_type_flag = True
+            elif return_type_flag:
+                rtype_group.append(i)
+            else:
+                rlist.append(i)
+        return rlist
+
     # comma_spliter
     def comma_spliter(self,vec:list) -> "Data":
         """
@@ -526,13 +563,6 @@ class Parser:
                 pass
         return index_tmp
     
-    def find_special_prefix(self):
-        """
-        # find_special_prefix
-        
-        """
-        pass
-
     def resolve_operation(self,vec:list) -> list: # 式を計算順序に従い解決するmethodです
         """
         # resolve_operation 
@@ -726,6 +756,24 @@ class List(Elem):
         self.expr = expr
         self.index_list = index
 
+    def resolve_self_unit(self,expr):
+        expr_parser = Expr_parser(expr)
+        return expr_parser.resolve()
+
+    def resolve_self(self):
+        """
+        # resolve_self 
+        ## 処理前
+        ```
+        index_list = [<ListBlock>,...]
+        ```
+        ## 処理後
+        ```
+        index_list = [<expr>,<expr>]
+        ```
+        """
+        self.index_list = [self.resolve_self_unit(i.get_contents()) for i in self.index_list]
+
     def __repr__(self):
         return f"<{type(self).__name__} expr:({self.expr}) index:({self.index_list})>"
 
@@ -764,8 +812,9 @@ class DecFunc(Elem):
     """
     関数の宣言部分
     (pub) fn <name><parenblock>:<type> <block>
+    args
     """
-    def __init__(self, funcname:str,args:list,return_type, contents: str) -> None:
+    def __init__(self, funcname:str,args:list,return_type, contents: Block,pub_flag:bool) -> None:
         super().__init__(funcname, contents)
         self.return_type = return_type
         self.args = args
@@ -815,7 +864,6 @@ class Expr_parser(Parser): # 式について解決します
             i.resolve_self()
         return codelist
 
-
 class State_parser(Parser): # 文について解決します
     """
     # statement resolver
@@ -827,6 +875,14 @@ class State_parser(Parser): # 文について解決します
     """
     def __init__(self, code: str) -> None:
         super().__init__(code)
+        # <special> <expr>;
+        self.special = [
+            "return",
+            "break",
+            "continue"
+            "assert",
+        ]
+        # object type
         self.object_type = [
             "i32",
             "i64",
@@ -834,14 +890,27 @@ class State_parser(Parser): # 文について解決します
             "f64",
         ]
     
-    def grouping_decfunc(self,vec:list) -> list:
-        """
-        関数宣言部についてまとめます
-        (pub) fn <name><parenblock>:<type> <block>
-        """
-        flag:bool = False
-        group:list = list()
-        rlist:list = list()
-        for i in vec:
-            pass
-        return rlist
+    def code2vec(self, code: str) -> list:
+        # クォーテーションをまとめる
+        codelist = self.resolve_quotation(code, "\"")
+        # ブロック、リストブロック、パレンブロック Elemをまとめる
+        for i in self.blocks:codelist = self.grouping_elements(codelist, *i)
+        # Wordをまとめる
+        codelist = self.grouping_words(codelist, self.split, self.word_excludes)
+        ## if, elif, else, forをまとめる
+        codelist = self.grouping_syntax(codelist, self.syntax_words)
+        ## functionの呼び出しをまとめる
+        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+        ## listの呼び出しをまとめる
+        codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
+        ## 演算子をまとめる
+        #codelist = self.grouping_operator(codelist,self.length_order_ope_list)
+        ## 演算子を解決する
+        #codelist = self.resolve_operation(codelist)
+        codelist = self.grouping_decfunc(codelist)
+        return codelist
+    
+    def resolve(self):
+        codelist = self.code2vec(self.code)
+        return codelist
+

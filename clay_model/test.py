@@ -58,48 +58,55 @@ def __test_03():
 
     """
     expr_test_cases=[
-        """
-        0 <= if (i % 2 == 0)
-        {
-            return i/2;
-        }
-        else
-        {
-            i*3 + 1
-        } + add(1,2,3)
-        """,
-        """
-        for (i <- range(10))
-        {
-            print("hello world");
-            print("hello world");
-            j += i
-        }
-        else
-        {
-            return j;
-        } + add(1 , 1)
-        """,
-        " 10 + ( x + log10(2) * sin(x) ) * log10(x)",
-        "(-sin(x)*3)+(-2*cos(x))",
-        "pi",
-        "gcd(a,b)",
-        "sin(x)",
-        "(1)+2",
-        "3.14",
-        "-812+42",
-        "a / b*(c+d)",
-        "a / (b*(c+d))",
-        "a*a*a",
-        "x^3+x^2+3",
-        "2*cube(x)+3*squared(x)+3",
-        "10<=d<100",
-        "a[0][0]+a[0][1] * arr(a)[0][2] * if (expr) { [0,1] } else{ [1,0] } [0]",
+"""
+fn add(a:i32,b:i32):i32{
+    return a + b;
+}
+pub fn sub(a:i32,b:i32):i32{
+    let c = a - b;
+    return c;
+}
+let c = add(1,2);
+let d:i32 = a / (b*(c+d));
+""",
+"""
+pub fn vec_gen(len:i32):Vec<i32>{
+    let a:Vec <i32> = [0,1,2,3];
+    return a;
+}
+""",
+"""
+fn gcd(a:i32,b:i32):i32{
+    if b == 0{
+        return a;
+    }else{
+        return gcd(b,a%b);
+    };
+}
+""",
+"""
+if (num % 15 == 0)
+{
+	print("fizzbazz");
+}
+elif (num % 3 == 0)
+{
+	print("fizz");
+}
+elif (num % 5 == 0)
+{
+	print("bazz");
+}
+else
+{
+	print(num);
+}
+"""
     ]
 
-    a = parser.Expr_parser("") #constract expr parser
     for testcase in expr_test_cases:
-        codelist = a.code2vec(testcase)
+        a = parser.State_parser(testcase) #constract expr parser
+        codelist = a.resolve()
         print(testcase)
         pprint(codelist)
         print()
@@ -165,7 +172,44 @@ def __test_06():
         "!f(a,b)",
         "2** -1",
         "2**-1**-1 - 1 - 1", # (2**(-(1**(-1)))) -1-1
-        "if (expr){return 1;}elif (expr2){pass;}else{return 0;} + loop {break 4;}"
+        "if (expr){return 1;}elif (expr2){pass;}else{return 0;} + loop {break 4;}",
+        """
+        0 <= if (i % 2 == 0)
+        {
+            return i/2;
+        }
+        else
+        {
+            i*3 + 1
+        } + add(1,2,3)
+        """,
+        """
+        for (i <- range(10))
+        {
+            print("hello world");
+            print("hello world");
+            j += i
+        }
+        else
+        {
+            return j;
+        } + add(1 , 1)
+        """,
+        " 10 + ( x + log10(2) * sin(x) ) * log10(x)",
+        "(-sin(x)*3)+(-2*cos(x))",
+        "pi",
+        "gcd(a,b)",
+        "sin(x)",
+        "(1)+2",
+        "3.14",
+        "-812+42",
+        "a / b*(c+d)",
+        "a / (b*(c+d))",
+        "a*a*a",
+        "x^3+x^2+3",
+        "2*cube(x)+3*squared(x)+3",
+        "10<=d<100",
+        "a[0][0]+a[0][1] * arr(a)[0][2] * if (expr) { [0,1] } else{ [1,0] } [0]",
     ]
     
     for i,testcase in enumerate(expr_test_cases):
@@ -177,9 +221,9 @@ def __test_06():
         # print("minimun priority index:",a.find_min_priority_index(codelist))
         print()
 
-    
 
 if __name__=="__main__":
     # __test_02()
-    __test_06()
+    # __test_06()
+    __test_03()
 
