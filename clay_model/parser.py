@@ -8,9 +8,8 @@ import copy
 class Parser:
     # resolve <expr>
     # 式を解決します
-    def __init__(self, code:str, mode = "lisp") -> None:
+    def __init__(self, code:str) -> None:
         self.code:str = code
-        self.mode = mode
 
         # setting
         ## <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
@@ -552,10 +551,10 @@ class Parser:
         if operation_index is not None: # if operation not found
             pre_group:list = vec[: operation_index]
             post_group:list = vec[operation_index + 1:]
-            return Func(
+            return [Func(
                 vec[operation_index], # operation name (func name)
                 [pre_group,post_group]# operation args (func args)
-            )
+            )]
         else:
             return vec
 
@@ -572,6 +571,13 @@ class Elem:
     def get_contents(self):return self.contents
 
     def get_name(self):return self.name
+
+    def resolve_self(self):
+        """
+        # resolve_self
+        それぞれのデータ型で再帰的に処理をする
+        """
+        print(f"resolve_self 未実装 {type(self).__name__}")
     
     def __repr__(self):return f"<{type(self).__name__} name:({self.name}) contents:({self.contents})>"
 
@@ -600,6 +606,12 @@ class String(Elem):
     """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
+    def resolve_self(self):
+        """
+        Stringの場合は何もする必要がない
+        """
+        pass
+
 class ListBlock(Elem):
     """
     リストを格納
@@ -607,6 +619,11 @@ class ListBlock(Elem):
     # returns
     get_contents -> [<expr>,...] # 式集合
     """
+    def resolve_self(self):
+        expr = self.get_contents()
+        parser = Expr_parser(expr)
+        self.contents = parser.resolve()
+
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
 class ParenBlock(Elem):
@@ -623,6 +640,11 @@ class ParenBlock(Elem):
     """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
+    def resolve_self(self):
+        expr = self.get_contents()
+        parser = Expr_parser(expr)
+        self.contents = parser.resolve()
+
 class Word(Elem):# Word Elemは仮どめ
     """
     引数、変数、関数定義、制御文法の文字列
@@ -632,6 +654,12 @@ class Word(Elem):# Word Elemは仮どめ
     get_contents -> <word>
     """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+
+    def resolve_self(self):
+        """
+        Wordの場合は何もする必要がない
+        """
+        pass
 
 class Syntax(Elem):
     """
@@ -658,10 +686,19 @@ class Func(Elem):
     srgs:[<expr>,...]のような形を期待する
     <name(excludes: 0-9)>(<expr>,...)
     # returns
-    get_contents -> (srgs:[<expr>,...])
+    get_contents -> (args:[<expr>,...])
     get_name -> (funcname: <name>)
     """
     def __init__(self, name: str, contents: list) -> None:super().__init__(name, contents)
+
+
+    def resolve_self_unit(self,expr:list):
+        parser = Expr_parser(expr)
+        return parser.resolve()
+
+    def resolve_self(self):
+        args = self.get_contents()
+        self.contents = [self.resolve_self_unit(i) for i in args]
 
     def __repr__(self):
         return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
@@ -750,10 +787,10 @@ class Expr_parser(Parser): # 式について解決します
     # expressions resolver
     ## 式について解決します
     """
-    def __init__(self, code: str, mode="lisp") -> None:
-        super().__init__(code, mode)
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
 
-    def code2vec(self,code:str) ->list[str]:
+    def code2vec(self,code:str) ->list:
         # クォーテーションをまとめる
         codelist = self.resolve_quotation(code, "\"")
         # ブロック、リストブロック、パレンブロック Elemをまとめる
@@ -771,6 +808,12 @@ class Expr_parser(Parser): # 式について解決します
         ## 演算子を解決する
         codelist = self.resolve_operation(codelist)
         return codelist
+    
+    def resolve(self):
+        codelist = self.code2vec(self.code)
+        for i in codelist: # 再帰
+            i.resolve_self()
+        return codelist
 
 
 class State_parser(Parser): # 文について解決します
@@ -782,8 +825,8 @@ class State_parser(Parser): # 文について解決します
     TODO Parenblock内の引数宣言ex) (a:i32,b:i32)
     TODO 変数宣言時の明示的な型宣言 a:Vec<i32>
     """
-    def __init__(self, code: str, mode="lisp") -> None:
-        super().__init__(code, mode)
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
         self.object_type = [
             "i32",
             "i64",
