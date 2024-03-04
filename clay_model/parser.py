@@ -812,9 +812,9 @@ class DecValue(Elem):
     def __repr__(self): # public 関数のときの表示
         return f"<{type(self).__name__} {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
 
-class Assignment_value(Elem):
+class AssignmentValue(Elem):
     """
-    # Assignment
+    # AssignmentValue
     変数への代入時に使用される
     Lichenでは a+=1がなにか値を返却することは無い
     ## 対応文字列
@@ -826,7 +826,30 @@ class Assignment_value(Elem):
     """
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
-    
+
+class ControlStatement(Elem):
+    """
+    # ControlStatement
+    ## 制御文
+    制御文とは以下のようなものである
+    ```
+    return <expr> ;
+    break  <expr> ;
+    continue ;
+    assert <expr> ;
+    ```
+    <expr>はparserの段階ではoptionalである。
+
+    Lichenではif 文やfor loop while から抜ける際に
+    breakに式を渡すことで値を返却することができる    
+
+    # returns
+    get_name() -> <name> (name| return, break, continue, assert)
+    get_contents() -> <expr> 
+    """
+    def __init__(self, name: str, expr: str) -> None:
+        super().__init__(name, expr)
+
 
 class Expr_parser(Parser): # 式について解決します
     """
@@ -876,7 +899,7 @@ class State_parser(Parser): # 文について解決します
         self.control_statement = [
             "return",
             "break",
-            "continue"
+            "continue",
             "assert",
         ]
         # object type
@@ -908,8 +931,10 @@ class State_parser(Parser): # 文について解決します
         #codelist = self.grouping_operator(codelist,self.length_order_ope_list)
         ## 演算子を解決する
         #codelist = self.resolve_operation(codelist)
+        # State_parser固有の処理
         codelist = self.grouping_decfunc(codelist)
         codelist = self.grouping_decvalue(codelist)
+        codelist = self.grouping_controlstatement(codelist)
         return codelist
 
     def grouping_decfunc(self,vec:list["Elem"]) -> list:
@@ -952,7 +977,7 @@ class State_parser(Parser): # 文について解決します
                 rlist.append(i)
         return rlist
 
-    def grouping_decvalue(self, vec: list[Elem]) -> list:
+    def grouping_decvalue(self, vec: list["Elem"]) -> list:
         """
         # grouping_decvalue
         (const|let) <name>:<type> = <expr>;
@@ -1030,6 +1055,29 @@ class State_parser(Parser): # 文について解決します
                 else:
                     print("Error!") # 
                     return
+            else:
+                rlist.append(i)
+        return rlist
+
+    def grouping_controlstatement(self,vec: list["Elem"]):
+        """
+        # grouping_controlstatement
+        制御文をまとめる
+        """
+        flag:bool = False
+        name:str = None
+        expr_group:list = list()
+        rlist:list = list()
+        for i in vec:
+            if type(i) is Word and i.get_contents() in self.control_statement:
+                name = i.get_contents() # name :example (return, break ,continue, assert)
+                flag = True
+            elif type(i) is str and i == ';' and flag:
+                rlist.append(ControlStatement(name,copy.copy(expr_group)))
+                expr_group.clear()
+                flag = False
+            elif flag:
+                expr_group.append(i)
             else:
                 rlist.append(i)
         return rlist
