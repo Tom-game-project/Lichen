@@ -70,10 +70,7 @@ let c = add(1,2);
 let d:i32 = a / (b*(c+d));
 """,
 """
-pub fn vec_gen(len:i32):Vec<i32>{
-    let a:Vec <i32> = [0,1,2,3];
-    return a;
-}
+let a = if (expr){return 0;}else{return 1} + a;
 """,
 """
 fn gcd(a:i32,b:i32):i32{

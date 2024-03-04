@@ -66,6 +66,7 @@ class Parser:
         # const
         self.ESCAPESTRING = "\\"
         self.FUNCTION = "fn"
+        self.SEMICOLON = ";"
 
     # クォーテーションはまとまっている前提
     def resolve_quotation(self,code:str,quo_char:str) -> list[str]:
@@ -415,42 +416,6 @@ class Parser:
         rlist:list = copy.copy(vec)
         for i in ordered_opelist:
             rlist = self.grouping_operator_unit(rlist,i)
-        return rlist
-
-    def grouping_decfunc(self,vec:list["Elem"]) -> list:
-        """
-        # grouping_decfunc 
-        関数宣言部分を切り分けます
-        """
-        flag:bool = False
-        return_type_flag:bool = False
-        func_name:str = None
-        func_args:list = list()
-        rtype_group:list = list()
-        rlist:list = list()
-        for i in vec:
-            if type(i) is Word:
-                if i.get_contents() == self.FUNCTION:
-                    flag = True
-                elif return_type_flag:
-                    rtype_group.append(i)
-                else:
-                    rlist.append(i)
-            elif type(i) is Func and flag:
-                func_name = i.get_name()
-                func_args = i.get_contents()
-            elif flag and  type(i) is Block:
-                rlist.append(DecFunc( func_name, copy.copy(func_args), copy.copy(rtype_group), i, pub_flag = False))
-                flag = False
-                return_type_flag = False
-                rtype_group.clear()
-                func_args.clear()
-            elif type(i) is str and i == ":" and flag:
-                return_type_flag = True
-            elif return_type_flag:
-                rtype_group.append(i)
-            else:
-                rlist.append(i)
         return rlist
 
     # comma_spliter
@@ -818,14 +783,46 @@ class DecFunc(Elem):
         super().__init__(funcname, contents)
         self.return_type = return_type
         self.args = args
+        self.pub_flag  = pub_flag
     
-    def __repr__(self):
+    def __repr__(self): # public 関数のときの表示
         return f"<{type(self).__name__} funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
 
 class DecValue(Elem):
     """
     変数の宣言
-    (pub)(const|let) <name>:<type> = <expr>;
+    (pub) (const|let) <name>:<type> = <expr>;
+    ## returns
+    get_name() -> valuename (宣言した)変数の名前
+    get_content() -> 宣言の具体的な内容
+    関数の宣言は代入とセットの場合がある
+    """
+    def __init__(self,mutable:str, valuename: str, type_:str, contents:list,pub_flag = False) -> None:
+        super().__init__(
+            valuename, # 宣言した変数(または定数)名
+            contents   # 初期化式、Noneの場合もある
+        )
+        self.mutable = mutable# const or let
+        self.type_ = type_ # 変数(または定数)の型
+        self.pub_flag = pub_flag # publicであるかどうか
+
+    def get_type(self):
+        return self.type_
+    
+    def __repr__(self): # public 関数のときの表示
+        return f"<{type(self).__name__} {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+
+class Assignment(Elem):
+    """
+    # Assignment
+    変数への代入時に使用される
+    ## 対応文字列
+    =
+    +=
+    -=
+    *=
+    /=
+
     """
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
@@ -889,6 +886,10 @@ class State_parser(Parser): # 文について解決します
             "f32",
             "f64",
         ]
+        self.value_dec_mutable = [
+            "const",
+            "let"
+        ]
     
     def code2vec(self, code: str) -> list:
         # クォーテーションをまとめる
@@ -908,8 +909,128 @@ class State_parser(Parser): # 文について解決します
         ## 演算子を解決する
         #codelist = self.resolve_operation(codelist)
         codelist = self.grouping_decfunc(codelist)
+        codelist = self.grouping_decvalue(codelist)
         return codelist
-    
+
+    def grouping_decfunc(self,vec:list["Elem"]) -> list:
+        """
+        # grouping_decfunc 
+        関数宣言部分を切り分けます
+        継承先、State_parserで使用するmethod
+        """
+        flag:bool = False
+        return_type_flag:bool = False
+        func_name:str = None
+        func_args:list = list()
+        rtype_group:list = list()
+        rlist:list = list()
+        for i in vec:
+            if type(i) is Word:
+                if i.get_contents() == self.FUNCTION:
+                    flag = True
+                elif return_type_flag:
+                    rtype_group.append(i)
+                else:
+                    rlist.append(i)
+            elif type(i) is Func and flag:
+                func_name = i.get_name()
+                func_args = i.get_contents()
+            elif flag and  type(i) is Block:
+                rlist.append(DecFunc( func_name, copy.copy(func_args), copy.copy(rtype_group), i, pub_flag = False))
+                flag = False
+                return_type_flag = False
+                rtype_group.clear()
+                func_args.clear()
+            elif type(i) is str and i == ":" and flag:
+                return_type_flag = True
+            elif return_type_flag:
+                rtype_group.append(i)
+            else:
+                rlist.append(i)
+        return rlist
+
+    def grouping_decvalue(self, vec: list[Elem]) -> list:
+        """
+        # grouping_decvalue
+        (const|let) <name>:<type> = <expr>;
+        - TODO :ハードコーディングを解消
+        """
+        ## bool
+        flag:bool = False
+        type_flag:bool = False
+        assignment_flag:bool = False
+        ## str
+        mutable:str = None
+        value_name:str = None
+        ## list
+        rtype_group:list = list()
+        contents_group:list = list()
+        rlist:list = list()
+        for i in vec:
+            if type(i) is Word and i.get_contents() in self.value_dec_mutable: # const,let を見つけたら宣言開始
+                flag = True
+                mutable = i.get_contents()
+            elif assignment_flag: # <expr> 追加 contents_group
+                # <expr>
+                if type(i) is str and i == ';': # 宣言の終了
+                    #print(mutable,value_name,rtype_group,contents_group)
+                    rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
+                    rtype_group.clear()
+                    contents_group.clear()
+                    value_name = None
+                    mutable = None
+                    flag = False
+                    type_flag = False
+                    assignment_flag = False
+                else:
+                    # ここでのiは代入する<expr>の一部
+                    contents_group.append(i)
+            elif type_flag: # <expr> 追加 rtype_group
+                if type(i) is str:
+                    if i == '=':
+                        assignment_flag = True
+                    elif i == ';':
+                        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
+                        rtype_group.clear()
+                        contents_group.clear()
+                        value_name = None
+                        mutable = None
+                        flag = False
+                        type_flag = False
+                        assignment_flag = False
+                    else:
+                        rtype_group.append(i)
+                else:
+                    # ここでのiは<type>の一部
+                    rtype_group.append(i)
+            elif flag: # 
+                if type(i) is str:
+                    if i == ':': # タイプ宣言の始まり
+                        type_flag = True
+                    elif i == ';': # 宣言の終了
+                        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
+                        rtype_group.clear()
+                        contents_group.clear()
+                        value_name = None
+                        mutable = None
+                        flag = False
+                        type_flag = False
+                        assignment_flag = False
+                    elif i == '=': 
+                        # 代入とセットになっている宣言の始まり
+                        # タイプ宣言がない
+                        assignment_flag = True
+                    else:
+                        rlist.append(i)
+                elif type(i) is Word:
+                    value_name = i.get_contents()
+                else:
+                    print("Error!") # 
+                    return
+            else:
+                rlist.append(i)
+        return rlist
+
     def resolve(self):
         codelist = self.code2vec(self.code)
         return codelist
