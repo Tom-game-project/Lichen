@@ -68,6 +68,9 @@ pub fn sub(a:i32,b:i32):i32{
 }
 let c = add(1,2);
 let d:i32 = a / (b*(c+d));
+c += 1;
+d = d + 42;
+return d;
 """,
 """
 let a = if (expr){return 0;}else{return 1} + a;
