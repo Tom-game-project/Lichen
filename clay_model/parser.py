@@ -812,17 +812,17 @@ class DecValue(Elem):
     def __repr__(self): # public 関数のときの表示
         return f"<{type(self).__name__} {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
 
-class Assignment(Elem):
+class Assignment_value(Elem):
     """
     # Assignment
     変数への代入時に使用される
+    Lichenでは a+=1がなにか値を返却することは無い
     ## 対応文字列
-    =
-    +=
-    -=
-    *=
-    /=
-
+    <name> = <expr>;
+    <name> += <expr>;
+    <name> -= <expr>;
+    <name> *= <expr>;
+    <name> /= <expr>;
     """
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
@@ -873,7 +873,7 @@ class State_parser(Parser): # 文について解決します
     def __init__(self, code: str) -> None:
         super().__init__(code)
         # <special> <expr>;
-        self.special = [
+        self.control_statement = [
             "return",
             "break",
             "continue"
@@ -918,9 +918,12 @@ class State_parser(Parser): # 文について解決します
         関数宣言部分を切り分けます
         継承先、State_parserで使用するmethod
         """
+        # bool
         flag:bool = False
         return_type_flag:bool = False
+        # str
         func_name:str = None
+        # list
         func_args:list = list()
         rtype_group:list = list()
         rlist:list = list()
