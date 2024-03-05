@@ -19,9 +19,6 @@ def __test_01():
 def __test_02():
     """
     # __test_04
-    ## expr test
-
-    
     """
     a = parser.Parser("")
     # expr test cases
@@ -54,8 +51,7 @@ loop {
 def __test_03():
     """
     # __test_03
-    ## expr test
-
+    ## 文パーサの動作テスト
     """
     expr_test_cases=[
 """
@@ -112,6 +108,10 @@ else
         print()
 
 def __test_04():
+    """
+    # __test_04
+    ## 式パーサの動作テスト
+    """
     expr_test_cases = [
         "a[0]",
         "func()[0][1+a]",
@@ -140,6 +140,8 @@ def __test_04():
 
 def __test_05():
     """
+    # __test_05
+    ## 
     コンマ区切り
     """
     expr_test_cases = [
@@ -150,15 +152,19 @@ def __test_05():
         "mut a:i32,mut b:i32"
     ]
     
-    a = parser.Parser("")
     for testcase in expr_test_cases:
-        codelist = a.code2vec(testcase)
+        a = parser.Parser(testcase)
+        codelist = a.resolve()
         print("sample expr:",testcase)
         pprint(codelist)
         # print("minimun priority index:",a.find_min_priority_index(codelist))
         print()
 
 def __test_06():
+    """
+    # __test_06
+    ## 式パーサの動作テスト
+    """
     expr_test_cases = [
         "func()[0][1+a]",
         "print(hello[0],\"world\"+\"!\")",
@@ -210,6 +216,8 @@ def __test_06():
         "2*cube(x)+3*squared(x)+3",
         "10<=d<100",
         "a[0][0]+a[0][1] * arr(a)[0][2] * if (expr) { [0,1] } else{ [1,0] } [0]",
+        "a = a + 1",
+        "a += 1"
     ]
     
     for i,testcase in enumerate(expr_test_cases):
@@ -224,6 +232,6 @@ def __test_06():
 
 if __name__=="__main__":
     # __test_02()
-    # __test_06()
-    __test_03()
+    # __test_03()
+    __test_06()
 

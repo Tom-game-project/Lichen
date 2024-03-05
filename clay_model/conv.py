@@ -7,7 +7,8 @@ import parser
 class lc2wat_compiler:
     """
     # wasm_compiler 
-    ## lichen をwasmにコンパイルします
+    ## lichen をwatに変換します
+    
     """
     def __init__(self,codelist:list["parser.Elem"]):
         self.module = "(module {0})"
