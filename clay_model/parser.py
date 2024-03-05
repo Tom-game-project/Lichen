@@ -13,6 +13,8 @@ class Parser:
 
         # setting
         ## <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
+        ## =, +=, -=, *=, /= 演算子として扱う
+        ## TODO : 優先度リストの実装きれいに書き直す
         ## 左優先リスト
         self.left_priority_list:dict = {
             # 演算子優先順位
@@ -31,7 +33,14 @@ class Parser:
         }
         ## 右優先リスト
         self.right_priority_list:dict = {
-            "**":3
+            # 最下位
+            "=":-4,
+            "+=":-4,
+            "-=":-4,
+            "*=":-4,
+            "/=":-4,
+            # 二乗
+            "**":3,
         }
         ## 前置修飾 優先リスト
         self.prefix_priority_list:dict = {
@@ -786,7 +795,7 @@ class DecFunc(Elem):
         self.pub_flag  = pub_flag
     
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+        return f"<{type(self).__name__} pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
 
 class DecValue(Elem):
     """
@@ -810,7 +819,21 @@ class DecValue(Elem):
         return self.type_
     
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+        return f"<{type(self).__name__} pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+
+class Expr(Elem): # Exprは一時的なものである
+    """
+    # Expr
+    式を一時的にまとめておく場所です
+    ## returns
+    get_contents() -> <expr>
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+    def __repr__(self):
+        return f"<{type(self).__name__} expr:({self.contents})>"
+
 
 class AssignmentValue(Elem):
     """
@@ -935,6 +958,8 @@ class State_parser(Parser): # 文について解決します
         codelist = self.grouping_decfunc(codelist)
         codelist = self.grouping_decvalue(codelist)
         codelist = self.grouping_controlstatement(codelist)
+        codelist = self.public_checker(codelist) # 変数、関数宣言がpublicかどうかを調べる
+
         return codelist
 
     def grouping_decfunc(self,vec:list["Elem"]) -> list:
@@ -1080,6 +1105,36 @@ class State_parser(Parser): # 文について解決します
                 expr_group.append(i)
             else:
                 rlist.append(i)
+        return rlist
+    
+    def public_checker(self,vec:list["Elem"]):
+        """
+        # public_checker
+        pub <decfunc>
+        pub <decvalue>
+        """
+        pub_flag:bool = False
+        rlist:list = list()
+        for i in vec:
+            if type(i) is Word and i.get_contents() == "pub":
+                pub_flag = True
+            elif pub_flag and (type(i) is DecFunc or type(i) is DecValue):
+                i.pub_flag = True
+                rlist.append(i)
+                pub_flag = False
+            else:
+                rlist.append(i)
+        return rlist
+
+    def grouping_expr(self,vec:list["Elem"]) -> list:
+        """
+        # grouping_expr
+
+        """
+        group:list = list()
+        rlist:list = list()
+        for i in vec:
+            pass
         return rlist
 
     def resolve(self):
