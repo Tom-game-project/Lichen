@@ -828,7 +828,7 @@ class Expr(Elem): # Exprは一時的なものである
     ## returns
     get_contents() -> <expr>
     """
-    def __init__(self, name: str, contents: str) -> None:
+    def __init__(self, name: str, contents: list) -> None:
         super().__init__(name, contents)
 
     def __repr__(self):
@@ -960,6 +960,7 @@ class State_parser(Parser): # 文について解決します
         codelist = self.grouping_controlstatement(codelist)
         codelist = self.public_checker(codelist) # 変数、関数宣言がpublicかどうかを調べる
 
+        codelist = self.grouping_expr(codelist)
         return codelist
 
     def grouping_decfunc(self,vec:list["Elem"]) -> list:
@@ -1134,7 +1135,18 @@ class State_parser(Parser): # 文について解決します
         group:list = list()
         rlist:list = list()
         for i in vec:
-            pass
+            if any(map(lambda a:type (i) is a,[DecFunc, DecValue, ControlStatement])):
+                if group:
+                    rlist.append(Expr(None,copy.copy(group)))
+                    group.clear()
+                rlist.append(i)
+            elif type(i) is str and i == ";":
+                rlist.append(Expr(None,copy.copy(group)))
+                group.clear()
+            else:
+                group.append(i)
+        if group:
+            rlist.append(Expr(None,copy.copy(group)))
         return rlist
 
     def resolve(self):
