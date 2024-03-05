@@ -76,6 +76,31 @@ class Parser:
         self.ESCAPESTRING = "\\"
         self.FUNCTION = "fn"
         self.SEMICOLON = ";"
+        
+        # State_parser
+        ##
+        self.control_statement = [
+            "return",
+            "break",
+            "continue",
+            "assert",
+        ]
+        ## object type
+        self.object_type = [
+            "i32",
+            "i64",
+            "f32",
+            "f64",
+        ]
+        self.value_dec_mutable = [
+            "const",
+            "let"
+        ]
+        self.expr_excludes:list = [
+            DecFunc, # 関数宣言部分
+            DecValue, # 変数、定数宣言部分
+            ControlStatement # 制御文法部分
+        ]
 
     # クォーテーションはまとまっている前提
     def resolve_quotation(self,code:str,quo_char:str) -> list[str]:
@@ -562,6 +587,8 @@ class Parser:
         else:
             return vec
 
+    def resolve(self):
+        return self.code2vec(self.code)
 
 # Base Elem
 class Elem:
@@ -835,21 +862,6 @@ class Expr(Elem): # Exprは一時的なものである
         return f"<{type(self).__name__} expr:({self.contents})>"
 
 
-class AssignmentValue(Elem):
-    """
-    # AssignmentValue
-    変数への代入時に使用される
-    Lichenでは a+=1がなにか値を返却することは無い
-    ## 対応文字列
-    <name> = <expr>;
-    <name> += <expr>;
-    <name> -= <expr>;
-    <name> *= <expr>;
-    <name> /= <expr>;
-    """
-    def __init__(self, name: str, contents: str) -> None:
-        super().__init__(name, contents)
-
 class ControlStatement(Elem):
     """
     # ControlStatement
@@ -918,25 +930,7 @@ class State_parser(Parser): # 文について解決します
     """
     def __init__(self, code: str) -> None:
         super().__init__(code)
-        # <special> <expr>;
-        self.control_statement = [
-            "return",
-            "break",
-            "continue",
-            "assert",
-        ]
-        # object type
-        self.object_type = [
-            "i32",
-            "i64",
-            "f32",
-            "f64",
-        ]
-        self.value_dec_mutable = [
-            "const",
-            "let"
-        ]
-    
+
     def code2vec(self, code: str) -> list:
         # クォーテーションをまとめる
         codelist = self.resolve_quotation(code, "\"")
@@ -960,7 +954,7 @@ class State_parser(Parser): # 文について解決します
         codelist = self.grouping_controlstatement(codelist)
         codelist = self.public_checker(codelist) # 変数、関数宣言がpublicかどうかを調べる
 
-        codelist = self.grouping_expr(codelist)
+        codelist = self.grouping_expr(codelist,self.expr_excludes)
         return codelist
 
     def grouping_decfunc(self,vec:list["Elem"]) -> list:
@@ -1127,15 +1121,15 @@ class State_parser(Parser): # 文について解決します
                 rlist.append(i)
         return rlist
 
-    def grouping_expr(self,vec:list["Elem"]) -> list:
+    def grouping_expr(self,vec:list["Elem"],excludes:list) -> list:
         """
         # grouping_expr
-
+        excludes [DecFunc, DecValue, ControlStatement]
         """
         group:list = list()
         rlist:list = list()
         for i in vec:
-            if any(map(lambda a:type (i) is a,[DecFunc, DecValue, ControlStatement])):
+            if any(map(lambda a:type (i) is a,excludes)):
                 if group:
                     rlist.append(Expr(None,copy.copy(group)))
                     group.clear()
@@ -1151,5 +1145,47 @@ class State_parser(Parser): # 文について解決します
 
     def resolve(self):
         codelist = self.code2vec(self.code)
+        for i in codelist:
+            i.resolve_self()
         return codelist
 
+# Type_Elem
+class Type_Elem(Elem):
+    """
+    # Type_Elem
+    タイプ宣言用
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+    
+class Type_i32(Type_Elem):
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_i64(Type_Elem):
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_f32(Type_Elem):
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_f64(Type_Elem):
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_Char(Type_Elem):
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+# typeの解析
+class Type_parser:
+    """
+    # Type_parser
+    式、文とは違うのでparserクラスを継承しません
+    """
+    def __init__(self,code:str) -> None:
+        self.code = code
+    
+    def resolve(self):
+        pass
