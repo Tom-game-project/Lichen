@@ -3,9 +3,15 @@ from pprint import pprint
 
 
 def __test_00():
+    print("""
+# __test_00
+""")
     pass
 
 def __test_01():
+    print("""
+
+""")
     a = parser.Parser("")
     # expr test cases
     test_cases:list = list()
@@ -17,9 +23,10 @@ def __test_01():
         print()
 
 def __test_02():
-    """
-    # __test_04
-    """
+    print(
+"""
+# __test_02
+""")
     a = parser.Parser("")
     # expr test cases
     statement_test_cases = [
@@ -49,10 +56,10 @@ loop {
         print()
 
 def __test_03():
-    """
+    print("""
     # __test_03
     ## 文パーサの動作テスト
-    """
+    """)
     expr_test_cases=[
 """
 fn add(a:i32,b:i32):i32{
@@ -108,10 +115,10 @@ else
         print()
 
 def __test_04():
-    """
-    # __test_04
-    ## 式パーサの動作テスト
-    """
+    print("""
+# __test_04
+## 式パーサの動作テスト
+""")
     expr_test_cases = [
         "a[0]",
         "func()[0][1+a]",
@@ -139,11 +146,10 @@ def __test_04():
         print()
 
 def __test_05():
-    """
-    # __test_05
-    ## 
-    コンマ区切り
-    """
+    print("""
+# __test_05
+## コンマ区切り
+""")
     expr_test_cases = [
         "\"hello\",\"world\",\"Tom!\"",
         "0,1,2 ,3,4, 5 ,6,7  ,8,9,10",
@@ -161,10 +167,10 @@ def __test_05():
         print()
 
 def __test_06():
-    """
-    # __test_06
-    ## 式パーサの動作テスト
-    """
+    print("""
+# __test_06
+## 式パーサの動作テスト
+""")
     expr_test_cases = [
         "func()[0][1+a]",
         "print(hello[0],\"world\"+\"!\")",
