@@ -710,6 +710,20 @@ class Syntax(Elem):
     def get_expr(self):
         return self.expr
     
+    def resolve_self(self):
+        """
+        # resolve_self
+        ## if while for loop などを解決する
+        """
+        state_parser = State_parser(self.contents)
+        self.contents = state_parser.resolve()
+        # expr は Noneである可能性があることに注意
+        if self.expr is not None:
+            expr_parser = Expr_parser(self.expr)
+            self.expr = expr_parser.resolve()
+        else:
+            pass
+
     def __repr__(self):
         # override
         return f"<{type(self).__name__} name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
@@ -722,6 +736,14 @@ class SyntaxBox(Elem):
     """
     def __init__(self, name: str, contents: list[Syntax]) -> None:
         super().__init__(name, contents)
+
+    def resolve_self(self):
+        """
+        listの各要素は、すべてSyntaxになっているはずなので、
+        それぞれのsyntax要素のresolve_self methodを呼び出せば良い
+        """
+        for i in self.contents:
+            i.resolve_self()
 
     def __repr__(self):
         return f"<{type(self).__name__} name:({self.name}) args:({self.contents})>"
@@ -920,21 +942,9 @@ class Expr_parser(Parser): # 式について解決します
         rlist:list = list()
         for i in vec:
             if type(i) is Syntax:
-                if i.get_name() == "if":
+                if i.get_name() in ["if", "loop", "while", "for"]:
                     flag = True
-                    name = "if"
-                    group.append(i)
-                elif i.get_name() == "loop":
-                    flag = True
-                    name = "loop"
-                    group.append(i)
-                elif i.get_name() == "while":
-                    flag = True
-                    name = "while"
-                    group.append(i)
-                elif i.get_name() == "for":
-                    flag = True
-                    name = "for"
+                    name = i.get_name()
                     group.append(i)
                 elif i.get_name() == "elif":
                     if flag:
