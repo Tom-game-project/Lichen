@@ -1,6 +1,9 @@
 """
 # Lichen parser cray model
 Class parser
+
+TODO : コメントをかけるようにする
+
 """
 import copy
 
@@ -711,6 +714,18 @@ class Syntax(Elem):
         # override
         return f"<{type(self).__name__} name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
 
+class SyntaxBox(Elem):
+    """
+    # SyntaxBox
+    if elif else,loop else,while elseなどの連続して解釈されるコードを集めます
+    
+    """
+    def __init__(self, name: str, contents: list[Syntax]) -> None:
+        super().__init__(name, contents)
+
+    def __repr__(self):
+        return f"<{type(self).__name__} name:({self.name}) args:({self.contents})>"
+
 class Func(Elem):
     """
     # TODO:resolve args
@@ -894,6 +909,65 @@ class Expr_parser(Parser): # 式について解決します
     def __init__(self, code: str) -> None:
         super().__init__(code)
 
+    def grouping_syntaxbox(self,vec:list) -> list:
+        """
+        # grouping_syntaxbox
+        
+        """
+        flag:bool = False
+        name:str = None
+        group:list = list()
+        rlist:list = list()
+        for i in vec:
+            if type(i) is Syntax:
+                if i.get_name() == "if":
+                    flag = True
+                    name = "if"
+                    group.append(i)
+                elif i.get_name() == "loop":
+                    flag = True
+                    name = "loop"
+                    group.append(i)
+                elif i.get_name() == "while":
+                    flag = True
+                    name = "while"
+                    group.append(i)
+                elif i.get_name() == "for":
+                    flag = True
+                    name = "for"
+                    group.append(i)
+                elif i.get_name() == "elif":
+                    if flag:
+                        group.append(i)
+                    else: # flagが上がっていないのにelifが来た場合はerror
+                        print("Error!")                         # TODO 
+                elif i.get_name() == "else":
+                    if flag:
+                        group.append(i)
+                        rlist.append(SyntaxBox(name,copy.copy(group)))
+                        group.clear()
+                        name = None
+                        flag = False
+                    else: # flagが上がっていないのにelifが来た場合はerror
+                        print("Error!")                         # TODO
+                else: # 上記以外の制御式
+                    rlist.append(i)
+            else:
+                if flag:
+                    if group:
+                        rlist.append(SyntaxBox(name,copy.copy(group)))
+                        group.clear()
+                        name = None
+                    else: # group is empty
+                        pass
+                    flag = False
+                else:
+                    pass
+                rlist.append(i)
+        if group:
+            rlist.append(SyntaxBox(name,copy.copy(group)))
+        return rlist
+
     def code2vec(self,code:str) ->list:
         # クォーテーションをまとめる
         codelist = self.resolve_quotation(code, "\"")
@@ -903,6 +977,8 @@ class Expr_parser(Parser): # 式について解決します
         codelist = self.grouping_words(codelist, self.split, self.word_excludes)
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
+        ## if, elif, else, forをまとめる2
+        codelist =self.grouping_syntaxbox(codelist)
         ## functionの呼び出しをまとめる
         codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
         ## listの呼び出しをまとめる
