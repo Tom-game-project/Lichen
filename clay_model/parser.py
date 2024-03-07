@@ -653,10 +653,14 @@ class ListBlock(Elem):
     # returns
     get_contents -> [<expr>,...] # 式集合
     """
+    def resolve_self_unit(self,expr):
+        expr_parser = Expr_parser(expr)
+        return expr_parser.resolve()
+
     def resolve_self(self):
         expr = self.get_contents()
-        parser = Expr_parser(expr)
-        self.contents = parser.resolve()
+        parser = Parser(expr)
+        self.contents = [self.resolve_self_unit(i) for i in parser.resolve()]
 
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
@@ -895,6 +899,13 @@ class Expr(Elem): # Exprは一時的なものである
     def __init__(self, name: str, contents: list) -> None:
         super().__init__(name, contents)
 
+    def resolve_self(self):
+        """
+        # resolve_self
+        """
+        expr_parser = Expr_parser(self.contents)
+        self.contents = expr_parser.resolve()
+
     def __repr__(self):
         return f"<{type(self).__name__} expr:({self.contents})>"
 
@@ -1002,6 +1013,8 @@ class Expr_parser(Parser): # 式について解決します
     def resolve(self):
         codelist = self.code2vec(self.code)
         for i in codelist: # 再帰
+            if type(i) is str:
+                print("hay",codelist)
             i.resolve_self()
         return codelist
 

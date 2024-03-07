@@ -221,9 +221,19 @@ def __test_06():
         "x^3+x^2+3",
         "2*cube(x)+3*squared(x)+3",
         "10<=d<100",
+        "[a+b,0,0]",
         "a[0][0]+a[0][1] * arr(a)[0][2] * if (expr) { [0,1] } else{ [1,0] } [0]",
         "a = a + 1",
-        "a += 1"
+        "a += 1",
+        """
+a = if (a % 2 == 0){
+    logger(a);
+    return a / 2;
+}else{
+    logger(a);
+    return 3*a + 1;
+}
+"""
     ]
     
     for i,testcase in enumerate(expr_test_cases):
