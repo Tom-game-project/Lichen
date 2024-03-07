@@ -1123,7 +1123,7 @@ class State_parser(Parser): # 文について解決します
                 # <expr>
                 if type(i) is str and i == ';': # 宣言の終了
                     #print(mutable,value_name,rtype_group,contents_group)
-                    type_flag, mutable, value_name = self.group_contents_decvalue(mutable, value_name, rtype_group, contents_group, rlist)
+                    flag, type_flag, assignment_flag , mutable, value_name = self.__group_contents_decvalue(mutable, value_name, rtype_group, contents_group, rlist)
                 else:
                     # ここでのiは代入する<expr>の一部
                     contents_group.append(i)
@@ -1132,7 +1132,7 @@ class State_parser(Parser): # 文について解決します
                     if i == '=':
                         assignment_flag = True
                     elif i == ';':
-                        type_flag, mutable, value_name = self.group_contents_decvalue(mutable, value_name, rtype_group, contents_group, rlist)
+                        flag, type_flag, assignment_flag, mutable, value_name = self.__group_contents_decvalue(mutable, value_name, rtype_group, contents_group, rlist)
                     else:
                         rtype_group.append(i)
                 else:
@@ -1143,15 +1143,7 @@ class State_parser(Parser): # 文について解決します
                     if i == ':': # タイプ宣言の始まり
                         type_flag = True
                     elif i == ';': # 宣言の終了
-                        type_flag, mutable, value_name = self.group_contents_decvalue(mutable, value_name, rtype_group, contents_group, rlist)
-                        # rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
-                        # rtype_group.clear()
-                        # contents_group.clear()
-                        # value_name = None
-                        # mutable = None
-                        # flag = False
-                        # type_flag = False
-                        # assignment_flag = False
+                        flag,type_flag,assignment_flag, mutable, value_name = self.__group_contents_decvalue(mutable, value_name, rtype_group, contents_group, rlist)
                     elif i == '=': 
                         # 代入とセットになっている宣言の始まり
                         # タイプ宣言がない
@@ -1167,7 +1159,10 @@ class State_parser(Parser): # 文について解決します
                 rlist.append(i)
         return rlist
 
-    def group_contents_decvalue(self, mutable, value_name, rtype_group, contents_group, rlist):
+    def __group_contents_decvalue(self, mutable, value_name, rtype_group, contents_group, rlist):
+        """
+        # __group_contents_decvalue
+        ```python
         rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
         rtype_group.clear()
         contents_group.clear()
@@ -1176,7 +1171,17 @@ class State_parser(Parser): # 文について解決します
         flag = False
         type_flag = False
         assignment_flag = False
-        return type_flag,mutable,value_name
+        ```
+        """
+        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
+        rtype_group.clear()
+        contents_group.clear()
+        value_name = None
+        mutable = None
+        flag = False
+        type_flag = False
+        assignment_flag = False
+        return flag,type_flag,assignment_flag,mutable,value_name
 
     def grouping_controlstatement(self,vec: list["Elem"]):
         """
