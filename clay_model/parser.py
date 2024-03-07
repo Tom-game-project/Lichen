@@ -909,7 +909,6 @@ class Expr(Elem): # Exprは一時的なものである
     def __repr__(self):
         return f"<{type(self).__name__} expr:({self.contents})>"
 
-
 class ControlStatement(Elem):
     """
     # ControlStatement
@@ -932,7 +931,10 @@ class ControlStatement(Elem):
     """
     def __init__(self, name: str, expr: str) -> None:
         super().__init__(name, expr)
-
+    
+    def resolve_self(self):
+        expr_parser = Expr_parser(self.contents)
+        self.contents = expr_parser.resolve()
 
 class Expr_parser(Parser): # 式について解決します
     """
