@@ -593,6 +593,20 @@ class Parser:
     def resolve(self):
         return self.code2vec(self.code)
 
+    def __resolve_func_arg_unit(self,code:list):
+        codelist = self.grouping_words(code, self.split, self.word_excludes)
+        return codelist
+
+    def resolve_func_arg(self):
+        """
+        # resolve_func_arg
+        関数の引数の解決
+        """
+        rlist:list = list()
+        for i in self.code:
+            rlist.append(self.__resolve_func_arg_unit(i))
+        return rlist
+
 # Base Elem
 class Elem:
     """
@@ -871,6 +885,8 @@ class DecFunc(Elem):
         # resolve_self
         # TODO argsのtypeの処理
         """
+        parser = Parser(self.args)
+        self.args = parser.resolve_func_arg()
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
@@ -957,6 +973,8 @@ class ControlStatement(Elem):
     def resolve_self(self):
         expr_parser = Expr_parser(self.contents)
         self.contents = expr_parser.resolve()
+
+# === Parser ===
 
 class Expr_parser(Parser): # 式について解決します
     """
@@ -1280,8 +1298,8 @@ class Type_Elem(Elem):
     タイプ宣言用
     """
     def __init__(self, name: str, contents: str) -> None:
-        super().__init__(name, contents)
-    
+        super().__init__(name, contents)    
+
 class Type_i32(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
@@ -1303,13 +1321,21 @@ class Type_Char(Type_Elem):
         super().__init__(name, contents)
 
 # typeの解析
-class Type_parser:
+class Type_parser(Parser):
     """
     # Type_parser
-    式、文とは違うのでparserクラスを継承しません
+    型解析用
     """
     def __init__(self,code:str) -> None:
         self.code = code
     
+    def code2vec(self, code: str) -> list[str]:
+        """
+        # code2vec
+        type解析用
+        """
+        return super().code2vec(code)
+
+
     def resolve(self):
         pass

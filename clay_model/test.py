@@ -105,7 +105,8 @@ else
 {
 	print(num);
 }
-"""
+""",
+"let a:i32;"
     ]
 
     for i,testcase in enumerate(expr_test_cases):
