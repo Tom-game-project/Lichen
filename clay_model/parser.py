@@ -630,6 +630,10 @@ class Block(Elem):
     """
     def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
 
+    def resolve_self(self):
+        state_parser = State_parser(self.contents)
+        self.contents = state_parser.resolve()
+
 class String(Elem):
     """
     文字列を格納
@@ -862,6 +866,13 @@ class DecFunc(Elem):
         self.args = args
         self.pub_flag  = pub_flag
     
+    def resolve_self(self):
+        """
+        # resolve_self
+        # TODO argsのtypeの処理
+        """
+        self.contents.resolve_self()
+
     def __repr__(self): # public 関数のときの表示
         return f"<{type(self).__name__} pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
 

@@ -55,6 +55,7 @@ loop {
         pprint(codelist)
         print()
 
+
 def __test_03():
     print("""
     # __test_03
@@ -107,11 +108,12 @@ else
 """
     ]
 
-    for testcase in expr_test_cases:
+    for i,testcase in enumerate(expr_test_cases):
         a = parser.State_parser(testcase) #constract expr parser
         codelist = a.resolve()
-        print(testcase)
-        pprint(codelist)
+        print(f"test{str(i).rjust(2,'0')}".center(40,'='))
+        print("sample state: ",testcase)
+        print("result: ",codelist)
         print()
 
 def __test_04():
