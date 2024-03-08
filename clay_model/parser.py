@@ -897,6 +897,17 @@ class DecValue(Elem):
     def get_type(self):
         return self.type_
     
+    def resolve_self(self):
+        """
+        # resolve_self
+        初期化式がある場合それを解決します
+        """
+        if self.contents is not None:
+            expr_parser = Expr_parser(self.contents)
+            self.contents = expr_parser.resolve()
+        else:
+            pass
+
     def __repr__(self): # public 関数のときの表示
         return f"<{type(self).__name__} pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
 
@@ -1026,8 +1037,6 @@ class Expr_parser(Parser): # 式について解決します
     def resolve(self):
         codelist = self.code2vec(self.code)
         for i in codelist: # 再帰
-            if type(i) is str:
-                print("hay",codelist)
             i.resolve_self()
         return codelist
 
