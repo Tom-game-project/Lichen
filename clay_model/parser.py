@@ -620,6 +620,14 @@ class Elem:
 
     def get_name(self):return self.name
 
+    def wat_format_gen(self):
+        """
+        # wat_format_gen
+
+        """
+        print("未実装")
+        return "まだ実装できてないよ〜"
+
     def resolve_self(self):
         """
         # resolve_self
@@ -700,6 +708,17 @@ class ParenBlock(Elem):
         expr = self.get_contents()
         parser = Expr_parser(expr)
         self.contents = parser.resolve()
+    
+    def wat_format_gen(self):
+        """
+# wat_format_gen
+このmethodが呼び出されるときselfは
+式の優先順位変更に使用するParenBlockであることに注意
+        """
+        return self.contents[0].wat_format_gen()
+
+
+        
 
 class Word(Elem):# Word Elemは仮どめ
     """
@@ -716,6 +735,28 @@ class Word(Elem):# Word Elemは仮どめ
         Wordの場合は何もする必要がない
         """
         pass
+
+    def __self_is_i32(self) -> bool:
+        """
+# self_is_i32
+自分自身がi32であった場合、Trueを返却
+        """
+        for i in self.contents:
+            if '0' <= i <= '9':
+                pass
+            else:
+                return False
+        return True
+    
+    def wat_format_gen(self):
+        """
+# wat_format_gen
+## TODO:数字ではない場合
+        """
+        if self.__self_is_i32():
+            return "i32.const {}\n".format(self.contents)
+        else:
+            return "local.get ${}\n".format(self.contents)
 
 class Syntax(Elem):
     """
@@ -779,8 +820,40 @@ class Func(Elem):
     get_contents -> (args:[<expr>,...])
     get_name -> (funcname: <name>)
     """
-    def __init__(self, name: str, contents: list) -> None:super().__init__(name, contents)
-
+    def __init__(self, name: str, contents: list) -> None:
+        super().__init__(name, contents)
+        self.ope_correspondence_table = {
+            "+":"i32.add",
+            "-":"i32.sub",
+            "*":"i32.mul",
+            "/":"i32.div_u",
+            "%":"i32.rem_u",
+        }
+    
+    def wat_format_gen(self) -> str:
+        """
+        # wat_format_gen
+        """
+        wasm_code = ""
+        call_name:str = None
+        if type(self.name) is Operator:
+            call_name = self.ope_correspondence_table[self.name.get_contents()]
+            for i in self.contents: # per arg
+                if len(i) == 0:        # TODO
+                    pass
+                else:
+                    wasm_code += i[0].wat_format_gen()
+            wasm_code += call_name + '\n'
+        elif type(self.name) is str:
+            for i in self.contents: # per arg
+                if len(i) == 0:        # TODO
+                    pass
+                else:
+                    wasm_code += i[0].wat_format_gen()
+            wasm_code += "call ${}\n".format(self.name)
+        else:
+            pass
+        return wasm_code
 
     def resolve_self_unit(self,expr:list):
         parser = Expr_parser(expr)
@@ -879,7 +952,22 @@ class DecFunc(Elem):
         self.return_type = return_type
         self.args = args
         self.pub_flag  = pub_flag
-    
+
+    def wat_format_gen(self):
+        """
+# wat_format_gen
+
+## DecFunc
+        ```wat
+(func $name
+(param i32 i32);;引数
+(result i32)
+;;処理
+)
+        ```
+        """
+        pass
+
     def resolve_self(self):
         """
         # resolve_self
