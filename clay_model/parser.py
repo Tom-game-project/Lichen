@@ -718,8 +718,6 @@ class ParenBlock(Elem):
         return self.contents[0].wat_format_gen()
 
 
-        
-
 class Word(Elem):# Word Elemは仮どめ
     """
     引数、変数、関数定義、制御文法の文字列
@@ -840,6 +838,7 @@ class Func(Elem):
             "&&":"i32.and", # and
             "||":"i32.or", # or
 
+            # TODO
             "=":"local.set"
         }
     
@@ -850,13 +849,30 @@ class Func(Elem):
         wasm_code = ""
         call_name:str = None
         if type(self.name) is Operator:
-            call_name = self.ope_correspondence_table[self.name.get_contents()]
-            for i in self.contents: # per arg
-                if len(i) == 0:        # TODO
-                    pass
+            if self.name.get_contents() == '=':
+                # "=", "+="などの特殊な場合 
+                if len(self.contents) == 2:
+                    for i in self.contents[1:]:# 0番目を飛ばす
+                        if len(i) == 0:        # TODO
+                            pass
+                        else:
+                            wasm_code += i[0].wat_format_gen()
+                    # 以下の一行で`self.contents[0][0]`は必ずWordオブジェクトにならなければいけない
+                    wasm_code += "local.set ${}\n".format(self.contents[0][0].get_contents())
                 else:
-                    wasm_code += i[0].wat_format_gen()
-            wasm_code += call_name + '\n'
+                    # error
+                    # a = b
+                    # かならず引数は2つになるはずなのでそれ以外の場合はError!
+                    raise BaseException("Error!")
+            else:
+                # 普通の演算子(代入やincrではない)場合
+                call_name = self.ope_correspondence_table[self.name.get_contents()]
+                for i in self.contents: # per arg
+                    if len(i) == 0:        # TODO
+                        pass
+                    else:
+                        wasm_code += i[0].wat_format_gen()
+                wasm_code += call_name + '\n'
         elif type(self.name) is str:
             for i in self.contents: # per arg
                 if len(i) == 0:        # TODO
@@ -1440,3 +1456,4 @@ class Type_parser(Parser):
 
     def resolve(self):
         pass
+

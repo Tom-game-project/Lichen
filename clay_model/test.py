@@ -290,7 +290,7 @@ def __diff_test_00():
         "a / (b*(c+d))",
         "3+2*5",
         "gcd(b,a%b)",
-        "97 <= a && a<= 122"
+        "b = 97 <= a && a<= 122"
     ]
     output_list:list = [
 """
@@ -327,6 +327,8 @@ call $gcd
 """,
 """
 
+""",
+"""
 """,
     ]
     input_list = []
