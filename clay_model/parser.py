@@ -1204,16 +1204,6 @@ class State_parser(Parser): # 文について解決します
     def __group_contents_decvalue(self, mutable, value_name, rtype_group, contents_group, rlist):
         """
         # __group_contents_decvalue
-        ```python
-        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
-        rtype_group.clear()
-        contents_group.clear()
-        value_name = None
-        mutable = None
-        flag = False
-        type_flag = False
-        assignment_flag = False
-        ```
         """
         rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
         rtype_group.clear()
