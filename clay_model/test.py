@@ -25,7 +25,12 @@ class Tester:
         for i,(q,a) in enumerate(zip(self.question,self.answer)):
             print("test{:d}".format(i).center(80,"="))
             res = difflib.unified_diff(q.split(), a.split())
-            print("\n".join(res))
+            res = "\n".join(res)
+            if len(res) == 0:
+                print("ok")
+            else:
+                print("error!")
+                print(res)
         
 
 
@@ -284,7 +289,8 @@ def __diff_test_00():
         "a / b*(c+d)",
         "a / (b*(c+d))",
         "3+2*5",
-        "gcd(b,a%b)"
+        "gcd(b,a%b)",
+        "97 <= a && a<= 122"
     ]
     output_list:list = [
 """
@@ -318,6 +324,9 @@ local.get $a
 local.get $b
 i32.rem_u
 call $gcd
+""",
+"""
+
 """,
     ]
     input_list = []

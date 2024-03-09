@@ -823,11 +823,24 @@ class Func(Elem):
     def __init__(self, name: str, contents: list) -> None:
         super().__init__(name, contents)
         self.ope_correspondence_table = {
-            "+":"i32.add",
-            "-":"i32.sub",
-            "*":"i32.mul",
-            "/":"i32.div_u",
-            "%":"i32.rem_u",
+            # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
+            "+":"i32.add", # add
+            "-":"i32.sub", # sub 
+            "*":"i32.mul", # mul
+            "/":"i32.div_u",# div
+            "%":"i32.rem_u", # mod 
+
+            "==":"i32.eq",# Equal
+            "!=":"i32.ne",# Not equal 
+            "<":"i32.lt_u",# Less than
+            ">":"i32.gt_u", # greater than
+            "<=":"i32.le_u", # Less or equal
+            ">=":"i32.ge_u", # greater or equal
+
+            "&&":"i32.and", # and
+            "||":"i32.or", # or
+
+            "=":"local.set"
         }
     
     def wat_format_gen(self) -> str:
