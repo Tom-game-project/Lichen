@@ -1088,10 +1088,14 @@ class State_parser(Parser): # 文について解決します
         ## 演算子を解決する
         #codelist = self.resolve_operation(codelist)
         # State_parser固有の処理
+        ## 関数宣言をまとめる
         codelist = self.grouping_decfunc(codelist)
+        ## 変数定数宣言をまとめる
         codelist = self.grouping_decvalue(codelist)
+        ## return,continue,breakなどをまとめる
         codelist = self.grouping_controlstatement(codelist)
-        codelist = self.public_checker(codelist) # 変数、関数宣言がpublicかどうかを調べる
+        ## 変数、関数宣言がpublicかどうかを調べる
+        codelist = self.public_checker(codelist) 
 
         codelist = self.grouping_expr(codelist,self.expr_excludes)
         return codelist
