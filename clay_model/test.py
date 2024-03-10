@@ -1,5 +1,37 @@
 import parser
+
+import difflib
 from pprint import pprint
+
+class Tester:
+    """
+    # tester
+    テストクラス
+    期待するコードと実際に出力されるコードの差分を表示する
+    """
+    def __init__(
+            self,
+            question:list[str],
+            answer:list[str]
+        ) -> None:
+        self.question = question
+        self.answer = answer
+    
+    def test(self):
+        """
+# test
+## 期待するコードと実際に出力されるコードの差分を表示する
+        """
+        for i,(q,a) in enumerate(zip(self.question,self.answer)):
+            print("test{:d}".format(i).center(80,"="))
+            res = difflib.unified_diff(q.split(), a.split())
+            res = "\n".join(res)
+            if len(res) == 0:
+                print("ok")
+            else:
+                print("error!")
+                print(res)
+        
 
 
 def __test_00():
@@ -54,7 +86,6 @@ loop {
         print(testcase)
         pprint(codelist)
         print()
-
 
 def __test_03():
     print("""
@@ -249,8 +280,72 @@ a = if (a % 2 == 0){
         print()
 
 
+def __diff_test_00():
+    print(
+"""
+# __diff_test_00
+""")
+    test_list:list = [
+        "a / b*(c+d)",
+        "a / (b*(c+d))",
+        "3+2*5",
+        "gcd(b,a%b)",
+        "b = 97 <= a && a<= 122"
+    ]
+    output_list:list = [
+"""
+local.get $a
+local.get $b
+i32.div_u
+local.get $c
+local.get $d
+i32.add
+i32.mul
+""",
+"""
+local.get $a
+local.get $b
+local.get $c
+local.get $d
+i32.add
+i32.mul
+i32.div_u
+""",
+"""
+i32.const 3
+i32.const 2
+i32.const 5
+i32.mul
+i32.add
+""",
+"""
+local.get $b
+local.get $a
+local.get $b
+i32.rem_u
+call $gcd
+""",
+"""
+
+""",
+"""
+""",
+    ]
+    input_list = []
+    for i in test_list:
+        print("sample:",i)
+        expr_parser = parser.Expr_parser(i)
+        codelist = expr_parser.resolve()
+        wasm = codelist[0].wat_format_gen()
+        print(wasm)
+        input_list.append(wasm)
+    # (a (b (c d i32.add) i32.mul) i32.div_u)
+    tester = Tester(input_list,output_list)
+    tester.test()
+    
+
 if __name__=="__main__":
     # __test_02()
-    __test_03()
+    # __test_03()
     #__test_06()
-
+    __diff_test_00()
