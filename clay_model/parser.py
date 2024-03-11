@@ -1133,6 +1133,11 @@ class ControlStatement(Elem):
         """
         # wat_format_gen
         ## 
+        場合によって大きく対応が変わるので注意
+        - ループ内にあるばあい
+        - else
+        - if elif else文にある場合
+        - else
         """
         pass
 
@@ -1495,7 +1500,6 @@ class Type_parser(Parser):
         type解析用
         """
         return super().code2vec(code)
-
 
     def resolve(self):
         pass
