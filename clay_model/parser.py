@@ -717,7 +717,6 @@ class ParenBlock(Elem):
         """
         return self.contents[0].wat_format_gen()
 
-
 class Word(Elem):# Word Elemは仮どめ
     """
     引数、変数、関数定義、制御文法の文字列
@@ -886,6 +885,7 @@ class Func(Elem):
 
     def resolve_self_unit(self,expr:list):
         parser = Expr_parser(expr)
+        print(expr)
         return parser.resolve()
 
     def resolve_self(self):
@@ -969,6 +969,14 @@ class Data(Elem):
         for i in self.data:text += repr(i) + ",\n"
         return f"<{type(self).__name__} data:({text})>"
 
+class Arg(Elem):
+    """
+    # ArgParse
+    ## 引数エレメント
+    """
+    def __init__(self, name: str, type_: str) -> None:
+        super().__init__(name, type_)
+
 ### function declaration
 class DecFunc(Elem):
     """
@@ -982,20 +990,54 @@ class DecFunc(Elem):
         self.args = args
         self.pub_flag  = pub_flag
 
-    def wat_format_gen(self):
+    def arg_parse(self,args_list:list[list]) -> list[Arg]:
+        """
+        # arg_parse
+        [[<word>,":",<word>],[<word>,":",<word>]]
+        このような形のリスト
+        """
+        rlist:list = list()
+        for i in args_list:
+            flag:bool = False
+            name = None
+            type_ = None
+            for j in i:
+                if j == ":":
+                    flag = True
+                elif flag:
+                    # type
+                    type_ = j.get_contents()
+                else:
+                    # name
+                    name = j.get_contents()
+            rlist.append(Arg(name,type_))
+        return rlist
+
+    def wat_format_gen(self) -> str:
         """
 # wat_format_gen
 
 ## DecFunc
         ```wat
 (func $name
-(param i32 i32);;引数
+(param $b i32);;引数
+(param $a i32)
 (result i32)
 ;;処理
 )
         ```
         """
-        pass
+        wasm_code = ""
+        funcname:str = self.name
+        args:list[Arg] = self.arg_parse(self.args)
+        r_type = self.return_type
+        wasm_code += "(func ${}\n".format(funcname) # open func    
+        for i in args:
+            wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
+        wasm_code += "(resulut {})\n".format(r_type[0].get_contents())
+        # TODO : ここに処理を書く
+        wasm_code += ")\n" # close func
+        return wasm_code
 
     def resolve_self(self):
         """
@@ -1087,6 +1129,13 @@ class ControlStatement(Elem):
     def __init__(self, name: str, expr: str) -> None:
         super().__init__(name, expr)
     
+    def wat_format_gen(self):
+        """
+        # wat_format_gen
+        ## 
+        """
+        pass
+
     def resolve_self(self):
         expr_parser = Expr_parser(self.contents)
         self.contents = expr_parser.resolve()
