@@ -12,8 +12,8 @@ struct Parser{
 }
 
 
-impl Parser{
 
+impl Parser{ 
     fn new(code:&str) -> Self{
         Self {
             code: code.to_string(),
@@ -70,7 +70,6 @@ impl Parser{
                 if i == quo_char{
                     if open_flag{
                         group.push(i);
-                        println!("{:?}",group);
                         let se = StringElem::new(
                             group
                             .clone()
@@ -103,8 +102,69 @@ impl Parser{
         }
         return rlist;
     }
-}
 
+    fn grouping_elements(&self,codelist:Vec<ParseElem>,open_char:String,close_char:String,object_mode:&str) -> Result<Vec<ParseElem>,&str>{
+        // object_mode : block | paren | list
+        //
+        let mut rlist:Vec<ParseElem> = Vec::new();
+        let mut group:Vec<ParseElem> = Vec::new();
+        let mut depth:usize = 0;
+
+        for i in codelist{
+            match i {
+                ParseElem::UndefParseElem(v) => {
+                    // 不定objectだった場合
+                    if v.contents == open_char{
+                        if depth > 0 {
+                            group.push(ParseElem::UndefParseElem(v));
+                        }else if depth == 0 {
+                            //pass
+                        }else {
+                            return Err("Error!");
+                        }
+                        depth += 1;
+                    }else if v.contents == close_char {
+                        depth -= 1;
+                        if depth > 0{
+                            group.push(ParseElem::UndefParseElem(v));
+                        }else if depth == 0 {
+                            if object_mode == "block"{
+                                let be = BlockElem::new(group);
+                                rlist.push(ParseElem::BlockParseElem(be));
+                            }else if  object_mode == "list"{
+                                let le = ListBlockElem::new(group);
+                                rlist.push(ParseElem::ListBlockParseElem(le));
+                            }else if object_mode == "paren"{
+                                let pe = ParenBlockElem::new(group);
+                                rlist.push(ParseElem::ParenBlockParseElem(pe));
+                            }else{
+                                return Err("invalid object_mode");
+                            }
+                            group.clear();
+                        }else{
+                            return Err("Error!");
+                        }
+                    }else{
+                        if depth > 0 {
+                            group.push(ParseElem::UndefParseElem(v));
+                        }else if depth == 0 {
+                            let ue = UndefElem::new(v.contents.clone().to_string());
+                            rlist.push(ParseElem::UndefParseElem(ue));
+                        }else{
+                            return Err("Error!");
+                        }
+                    }
+                }
+                _ => {
+                    //それ以外の場合
+                    // ここでは文字列の場合、そのまま返却する
+                    //
+                }
+            }
+        }
+        return Ok(rlist);
+    }
+}
 
 /// # 列挙型
 /// 
@@ -116,6 +176,57 @@ trait Elem{
 
 }
 
+
+/// # UndefElem
+/// ## 不定な型
+
+struct UndefElem{
+    contents:String
+}
+impl UndefElem{
+    // UndefElem 
+    // returns
+    // contents -> String
+    fn new(contents:String) -> Self{
+        Self{
+            contents:contents
+        }
+    }
+}
+impl Elem for UndefElem{}
+
+
+struct BlockElem{
+    contents:Vec<ParseElem>
+}
+impl BlockElem{
+    fn new(contents:Vec<ParseElem>)->Self{
+        Self { contents: contents }
+    }
+}
+impl Elem for BlockElem{}
+
+
+struct ListBlockElem{
+    contents:Vec<ParseElem>
+}
+impl ListBlockElem{
+    fn new(contents:Vec<ParseElem>)->Self{
+        Self { contents: contents }
+    }
+}
+impl Elem for ListBlockElem{}
+
+
+struct ParenBlockElem{
+    contents:Vec<ParseElem>
+}
+impl ParenBlockElem{
+    fn new(contents:Vec<ParseElem>)->Self{
+        Self { contents: contents }
+    }
+}
+impl Elem for ParenBlockElem{}
 
 /// # StringElem
 /// ## 文字列
@@ -129,6 +240,7 @@ impl StringElem{
         }
     }
 }
+impl Elem for StringElem{}
 
 /// # WordElem
 /// ## 単語を格納
@@ -142,26 +254,19 @@ impl WordElem{
         }
     }
 }
+impl Elem for WordElem{}
 
 
-/// # UndefElem
-/// ## 不定な型
-struct UndefElem{
-    contents:String
-}
-impl UndefElem{
-    fn new(contents:String) -> Self{
-        Self{
-            contents:contents
-        }
-    }
-}
 
 /// # プログラムの要素
 enum ParseElem{
     StringParseElem(StringElem),
     WordParseElem(WordElem),
     UndefParseElem(UndefElem),
+    //Block
+    BlockParseElem(BlockElem),
+    ParenBlockParseElem(ParenBlockElem),
+    ListBlockParseElem(ListBlockElem),
 }
 impl ParseElem{
     fn show(&self){
@@ -174,6 +279,15 @@ impl ParseElem{
             }
             ParseElem::UndefParseElem(v) => {
                 println!("{}",v.contents);
+            }
+            ParseElem::BlockParseElem(v) => {
+                println!("<Block>");
+            }
+            ParseElem::ListBlockParseElem(v) => {
+                println!("<List>");
+            }
+            ParseElem::ParenBlockParseElem(v) => {
+                println!("<Paren>");
             }
         }
     }
