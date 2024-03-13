@@ -111,7 +111,7 @@ return d;
 let a = if (expr){return 0;}else{return 1} + a;
 """,
 """
-fn gcd(a:i32,b:i32):i32{
+pub fn gcd(a:i32,b:i32):i32{
     if b == 0{
         return a;
     }else{
@@ -290,7 +290,12 @@ def __diff_test_00():
         "a / (b*(c+d))",
         "3+2*5",
         "gcd(b,a%b)",
-        "b = 97 <= a && a<= 122"
+        "b = 97 <= a && a<= 122",
+"""
+pub fn f(a:i32,b:i32):i32{
+    print_i32(1);
+}
+"""
     ]
     output_list:list = [
 """
@@ -330,6 +335,7 @@ call $gcd
 """,
 """
 """,
+
     ]
     input_list = []
     for i in test_list:
@@ -344,8 +350,39 @@ call $gcd
     tester.test()
     
 
+
+def __diff_test_01():
+    print(
+"""
+# __diff_test_01
+""")
+    test_list:list = [
+"""
+pub fn f(a:i32,b:i32):i32{
+    print_i32(1);
+    return 1+1;
+}
+"""
+    ]
+    output_list:list = [
+""""""
+    ]
+    input_list = []
+    for i in test_list:
+        print("sample:",i)
+        expr_parser = parser.State_parser(i)
+        codelist = expr_parser.resolve()
+        wasm = codelist[0].wat_format_gen()
+        print(wasm)
+        input_list.append(wasm)
+    # (a (b (c d i32.add) i32.mul) i32.div_u)
+    tester = Tester(input_list,output_list)
+    tester.test()
+    
+
 if __name__=="__main__":
     # __test_02()
-    # __test_03()
+    __test_03()
     #__test_06()
-    __diff_test_00()
+    #__diff_test_00()
+    __diff_test_01()
