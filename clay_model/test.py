@@ -360,6 +360,7 @@ def __diff_test_01():
 """
 pub fn f(a:i32,b:i32):i32{
     print_i32(1);
+    return 1+1;
 }
 """
     ]
