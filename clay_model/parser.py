@@ -717,7 +717,6 @@ class ParenBlock(Elem):
         """
         return self.contents[0].wat_format_gen()
 
-
 class Word(Elem):# Word Elemは仮どめ
     """
     引数、変数、関数定義、制御文法の文字列
