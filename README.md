@@ -1,5 +1,7 @@
 # Lichen
 
+Check [Lichen Pages](https://tom-game-project.github.io/Lichen/) !
+
 ## Compact and smart programing language
 
 ## test version
