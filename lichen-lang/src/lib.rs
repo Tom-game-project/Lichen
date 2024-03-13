@@ -12,7 +12,6 @@ struct Parser{
 }
 
 
-
 impl Parser{ 
     fn new(code:&str) -> Self{
         Self {
@@ -47,7 +46,7 @@ impl Parser{
         }
     }
 
-    fn resolve_quotation(&self,code:String,quo_char:char) -> Vec<ParseElem>{
+    fn resolve_quotation(&self,code:String,quo_char:char) -> Result<Vec<ParseElem>,&str>{
         let mut open_flag = false;
         let mut escape_flag = false;
         let mut rlist:Vec<ParseElem> = Vec::new();
@@ -100,10 +99,10 @@ impl Parser{
                 }
             }
         }
-        return rlist;
+        return Ok(rlist);
     }
 
-    fn grouping_elements(&self,codelist:Vec<ParseElem>,open_char:String,close_char:String,object_mode:&str) -> Result<Vec<ParseElem>,&str>{
+    fn grouping_elements(&self,codelist:Vec<ParseElem>,open_char:&str,close_char:&str,object_mode:&str) -> Result<Vec<ParseElem>,&str>{
         // object_mode : block | paren | list
         //
         let mut rlist:Vec<ParseElem> = Vec::new();
@@ -114,7 +113,7 @@ impl Parser{
             match i {
                 ParseElem::UndefParseElem(v) => {
                     // 不定objectだった場合
-                    if v.contents == open_char{
+                    if v.contents == open_char.to_string(){
                         if depth > 0 {
                             group.push(ParseElem::UndefParseElem(v));
                         }else if depth == 0 {
@@ -123,11 +122,12 @@ impl Parser{
                             return Err("Error!");
                         }
                         depth += 1;
-                    }else if v.contents == close_char {
+                    }else if v.contents == close_char.to_string() {
                         depth -= 1;
                         if depth > 0{
                             group.push(ParseElem::UndefParseElem(v));
                         }else if depth == 0 {
+                            // type によって異なる型
                             if object_mode == "block"{
                                 let be = BlockElem::new(group.clone());
                                 rlist.push(ParseElem::BlockParseElem(be));
@@ -158,16 +158,34 @@ impl Parser{
                 _ => {
                     //それ以外の場合
                     // ここでは文字列の場合、そのまま返却する
-                    //
+                    if depth > 0 {
+                        group.push(i);
+                    }else if depth == 0 {
+                        rlist.push(i);
+                    }else{
+                        return Err("Error!");
+                    }
                 }
             }
         }
         return Ok(rlist);
     }
-}
 
-/// # 列挙型
-/// 
+    fn grouping_words(&self)->Result<Vec<ParseElem>,&str>{
+        todo!();
+    }
+
+    fn code2vec(&self) -> Result<Vec<ParseElem>,&str>{
+        let mut codelist = self.resolve_quotation(self.code.clone(),'"');
+        if codelist.is_err() {return codelist}
+        codelist = self.grouping_elements(codelist.unwrap(), "{", "}", "block");
+        if codelist.is_err() {return codelist}
+        codelist = self.grouping_elements(codelist.unwrap(), "(", ")", "paren");
+        if codelist.is_err() {return codelist}
+        codelist = self.grouping_elements(codelist.unwrap(), "[", "]", "list");
+        return codelist;
+    }
+}
 
 
 /// # 前要素共通メソッド
@@ -208,6 +226,7 @@ impl BlockElem{
 }
 impl Elem for BlockElem{}
 
+
 #[derive(Clone)]
 struct ListBlockElem{
     contents:Vec<ParseElem>
@@ -219,6 +238,7 @@ impl ListBlockElem{
 }
 impl Elem for ListBlockElem{}
 
+
 #[derive(Clone)]
 struct ParenBlockElem{
     contents:Vec<ParseElem>
@@ -229,6 +249,7 @@ impl ParenBlockElem{
     }
 }
 impl Elem for ParenBlockElem{}
+
 
 /// # StringElem
 /// ## 文字列
@@ -244,6 +265,7 @@ impl StringElem{
     }
 }
 impl Elem for StringElem{}
+
 
 /// # WordElem
 /// ## 単語を格納
@@ -261,7 +283,6 @@ impl WordElem{
 impl Elem for WordElem{}
 
 
-
 /// # プログラムの要素
 #[derive(Clone)]
 enum ParseElem{
@@ -274,30 +295,66 @@ enum ParseElem{
     ListBlockParseElem(ListBlockElem),
 }
 impl ParseElem{
-    fn show(&self){
+    fn show_all(&self)->String{
         match self{
             ParseElem::StringParseElem(v) => {
-                println!("<string: {}>",v.contents);
+                let mut r_string = String::new();
+                r_string.push_str("<String :");
+                r_string.push_str( &v.contents);
+                r_string.push_str(">");
+                r_string
             }
             ParseElem::WordParseElem(v) => {
-                println!("<word: {}>",v.contents);
+                let mut r_string = String::new();
+                r_string.push_str("<Word :");
+                r_string.push_str( &v.contents);
+                r_string.push_str(">");
+                r_string
             }
             ParseElem::UndefParseElem(v) => {
-                println!("{}",v.contents);
+                // undef
+                let mut r_string = String::new();
+                r_string.push_str("<Undef :");
+                r_string.push_str( &v.contents);
+                r_string.push_str(">");
+                r_string
             }
             ParseElem::BlockParseElem(v) => {
-                println!("<Block>");
+                let mut inner_list = Vec::new();
+                let mut r_string:String = String::new();
+                for i in &v.contents{
+                    inner_list.push(i.show_all());
+                }
+                r_string.push_str("<Block :");
+                r_string.push_str(&inner_list.join("\n"));
+                r_string.push_str(">");
+                r_string
             }
             ParseElem::ListBlockParseElem(v) => {
-                println!("<List>");
+                let mut inner_list = Vec::new();
+                let mut r_string:String = String::new();
+                for i in &v.contents{
+                    inner_list.push(i.show_all());
+                }
+                r_string.push_str("<List :");
+                r_string.push_str(&inner_list.join("\n"));
+                r_string.push_str(">");
+                r_string
             }
             ParseElem::ParenBlockParseElem(v) => {
-                println!("<Paren>");
+                let mut inner_list = Vec::new();
+                let mut r_string:String = String::new();
+                for i in &v.contents{
+                    inner_list.push(i.show_all());
+                }
+                r_string.push_str("<Paren :");
+                r_string.push_str(&inner_list.join("\n"));
+                r_string.push_str(">");
+                r_string
             }
         }
     }
 }
-
 
 
 #[cfg(test)]
@@ -306,11 +363,18 @@ mod tests {
 
     #[test]
     fn test_00() {
-        let code = "a = \"hello world\";".to_string();
-        let mut parser = Parser::new(&code);
-        let codelist=parser.resolve_quotation(code, '"');
-        for i in codelist{
-            i.show();
+        let code = "{a = \"hello world\";}".to_string();
+        let parser = Parser::new(&code);
+        let codelist = parser.code2vec();
+        match codelist {
+            Ok(v)=>{
+                for i in v{
+                    println!("{}",i.show_all());
+                }
+            }
+            Err(e)=>{
+                println!("{}",e);
+            }
         }
     }
 }
