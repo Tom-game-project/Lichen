@@ -129,13 +129,13 @@ impl Parser{
                             group.push(ParseElem::UndefParseElem(v));
                         }else if depth == 0 {
                             if object_mode == "block"{
-                                let be = BlockElem::new(group);
+                                let be = BlockElem::new(group.clone());
                                 rlist.push(ParseElem::BlockParseElem(be));
                             }else if  object_mode == "list"{
-                                let le = ListBlockElem::new(group);
+                                let le = ListBlockElem::new(group.clone());
                                 rlist.push(ParseElem::ListBlockParseElem(le));
                             }else if object_mode == "paren"{
-                                let pe = ParenBlockElem::new(group);
+                                let pe = ParenBlockElem::new(group.clone());
                                 rlist.push(ParseElem::ParenBlockParseElem(pe));
                             }else{
                                 return Err("invalid object_mode");
@@ -180,6 +180,7 @@ trait Elem{
 /// # UndefElem
 /// ## 不定な型
 
+#[derive(Clone)]
 struct UndefElem{
     contents:String
 }
@@ -196,6 +197,7 @@ impl UndefElem{
 impl Elem for UndefElem{}
 
 
+#[derive(Clone)]
 struct BlockElem{
     contents:Vec<ParseElem>
 }
@@ -206,7 +208,7 @@ impl BlockElem{
 }
 impl Elem for BlockElem{}
 
-
+#[derive(Clone)]
 struct ListBlockElem{
     contents:Vec<ParseElem>
 }
@@ -217,7 +219,7 @@ impl ListBlockElem{
 }
 impl Elem for ListBlockElem{}
 
-
+#[derive(Clone)]
 struct ParenBlockElem{
     contents:Vec<ParseElem>
 }
@@ -230,6 +232,7 @@ impl Elem for ParenBlockElem{}
 
 /// # StringElem
 /// ## 文字列
+#[derive(Clone)]
 struct StringElem{
     contents:String
 }
@@ -244,6 +247,7 @@ impl Elem for StringElem{}
 
 /// # WordElem
 /// ## 単語を格納
+#[derive(Clone)]
 struct WordElem{
     contents:String
 }
@@ -259,6 +263,7 @@ impl Elem for WordElem{}
 
 
 /// # プログラムの要素
+#[derive(Clone)]
 enum ParseElem{
     StringParseElem(StringElem),
     WordParseElem(WordElem),
