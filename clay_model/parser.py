@@ -612,9 +612,10 @@ class Elem:
     """
     字句解析用データ型
     """
-    def __init__(self, name:str, contents:str) -> None:
+    def __init__(self, name:str, contents:str,depth:int) -> None:
         self.name = name
         self.contents = contents
+        self.depth = depth
 
     def get_contents(self):return self.contents
 
