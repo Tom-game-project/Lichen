@@ -137,7 +137,24 @@ else
 	print(num);
 }
 """,
-"let a:i32;"
+"let a:i32;",
+"""
+fn func00(a : bool) : bool{
+    if (a){
+        let r = True;
+        return r;
+    }else{
+        let r = False;
+        return r
+    };
+}
+""",
+"""
+fn func00(a : bool) : bool{
+    let r = True;
+    return r;
+}
+"""
     ]
 
     for i,testcase in enumerate(expr_test_cases):
@@ -146,6 +163,9 @@ else
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample state: ",testcase)
         print("result: ",codelist)
+        print("inner contents of decvalue")
+        if type(codelist[0]) is parser.DecFunc:
+            codelist[0].get_all_local_value() # print all contents of decfunc contents
         print()
 
 def __test_04():

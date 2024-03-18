@@ -640,9 +640,26 @@ class Elem:
         それぞれのデータ型で再帰的に処理をする
         """
         print(f"resolve_self 未実装 {type(self).__name__}")
-    
-    def __repr__(self):return f"<{type(self).__name__} name:({self.name}) contents:({self.contents})>"
 
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) contents:({self.contents})>"
+
+    def show(self):
+        """
+        # show
+        TODO 
+        階層構造を見やすく表示します
+        """
+        return " "*self.depth + f"""<{type(self).__name__} name:({self.name})
+contents:({self.contents})>"""
+    
+    def get_all_local_value(self):
+        """
+        # get_all_local_value
+        持たない場合は何も返さない
+        """
+        print(f"{type(self).__name__}未実装")
+        return None
 
 ## Elements
 ### basic elements
@@ -765,7 +782,6 @@ class Word(Elem):# Word Elemは仮どめ
         else:
             return "local.get ${}\n".format(self.contents)
 
-
 class Syntax(Elem):
     """
     # returns
@@ -797,7 +813,7 @@ class Syntax(Elem):
 
     def __repr__(self):
         # override
-        return f"<{type(self).__name__} name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
+        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
 
 class SyntaxBox(Elem):
     """
@@ -817,8 +833,8 @@ class SyntaxBox(Elem):
         for i in self.contents:
             i.resolve_self()
 
-    def __repr__(self):
-        return f"<{type(self).__name__} name:({self.name}) args:({self.contents})>"
+    # def __repr__(self):
+    #     return f"<{type(self).__name__} name:({self.name}) args:({self.contents})>"
 
 class Func(Elem):
     """
@@ -897,15 +913,14 @@ class Func(Elem):
 
     def resolve_self_unit(self,expr:list):
         parser = Expr_parser(expr, depth = self.depth + 1)
-        print(expr)
         return parser.resolve()
 
     def resolve_self(self):
         args = self.get_contents()
         self.contents = [self.resolve_self_unit(i) for i in args]
 
-    def __repr__(self):
-        return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
+    # def __repr__(self):
+    #     return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
 
 class List(Elem):
     """
@@ -949,7 +964,7 @@ class List(Elem):
         self.index_list = [self.resolve_self_unit(i.get_contents()) for i in self.index_list]
 
     def __repr__(self):
-        return f"<{type(self).__name__} expr:({self.expr}) index:({self.index_list})>"
+        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.expr}) index:({self.index_list})>"
 
 class Operator(Elem):
     """
@@ -962,7 +977,7 @@ class Operator(Elem):
         self.ope = ope
 
     def __repr__(self):
-        return f"<{type(self).__name__} ope:({self.ope})>"
+        return f"<{type(self).__name__} depth:({self.depth}) ope:({self.ope})>"
 
 class Data(Elem):
     """
@@ -979,7 +994,7 @@ class Data(Elem):
     def __repr__(self):
         text:str = ""
         for i in self.data:text += repr(i) + ",\n"
-        return f"<{type(self).__name__} data:({text})>"
+        return f"<{type(self).__name__} depth:({self.depth}) data:({text})>"
 
 class Arg(Elem):
     """
@@ -995,6 +1010,7 @@ class DecFunc(Elem):
     関数の宣言部分
     (pub) fn <name><parenblock>:<type> <block>
     args
+    TODO:decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
     """
     def __init__(self, funcname:str,args:list,return_type, contents: Block,pub_flag:bool, depth:int) -> None:
         super().__init__(funcname, contents, depth)
@@ -1061,7 +1077,25 @@ class DecFunc(Elem):
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+        return f"<{type(self).__name__} depth:({self.depth}) pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+
+    def get_all_local_value(self) -> list:
+        """
+        # get_all_local_value
+        decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
+        decvalueのリスト
+        """
+        rlist:list = list()
+        # error check
+        if type(self.contents) is Block:
+            pass
+        else:
+            print ("Error! : function contetns is not Block")
+
+        for i in self.contents.contents:
+            print(i.get_all_local_value())
+        return 
+
 
 class DecValue(Elem):
     """
@@ -1097,7 +1131,7 @@ class DecValue(Elem):
             pass
 
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+        return f"<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
 
 class Expr(Elem): # Exprは一時的なものである
     """
@@ -1117,7 +1151,7 @@ class Expr(Elem): # Exprは一時的なものである
         self.contents = expr_parser.resolve()
 
     def __repr__(self):
-        return f"<{type(self).__name__} expr:({self.contents})>"
+        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
 
 class ControlStatement(Elem):
     """
