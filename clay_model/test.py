@@ -31,8 +31,7 @@ class Tester:
             else:
                 print("error!")
                 print(res)
-        
-
+     
 
 def __test_00():
     print("""
@@ -163,9 +162,9 @@ fn func00(a : bool) : bool{
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample state: ",testcase)
         print("result: ",codelist)
-        print("inner contents of decvalue")
+        print("get_all_local_value result")
         if type(codelist[0]) is parser.DecFunc:
-            codelist[0].get_all_local_value() # print all contents of decfunc contents
+            print(codelist[0].get_all_local_value()) # print all contents of decfunc contents
         print()
 
 def __test_04():

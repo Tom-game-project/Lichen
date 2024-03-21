@@ -656,10 +656,10 @@ contents:({self.contents})>"""
     def get_all_local_value(self):
         """
         # get_all_local_value
-        持たない場合は何も返さない
+        持たない場合は空リストを返却する
         """
-        print(f"{type(self).__name__}未実装")
-        return None
+        print(f"{type(self).__name__} get_all_local_value 未実装")
+        return []
 
 ## Elements
 ### basic elements
@@ -678,6 +678,14 @@ class Block(Elem):
     def resolve_self(self):
         state_parser = State_parser(self.contents, depth = self.depth + 1)
         self.contents = state_parser.resolve()
+
+    def get_all_local_value(self) -> list[Elem]:
+        rlist:list = list()
+        for i in self.contents:
+            # ローカル変数を含んだリスト
+            local_vlaue:list = i.get_all_local_value()
+            rlist += local_vlaue
+        return rlist
 
 class String(Elem):
     """
@@ -815,6 +823,13 @@ class Syntax(Elem):
         # override
         return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
 
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
+
 class SyntaxBox(Elem):
     """
     # SyntaxBox
@@ -835,6 +850,13 @@ class SyntaxBox(Elem):
 
     # def __repr__(self):
     #     return f"<{type(self).__name__} name:({self.name}) args:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
 
 class Func(Elem):
     """
@@ -1088,13 +1110,11 @@ class DecFunc(Elem):
         rlist:list = list()
         # error check
         if type(self.contents) is Block:
+            #print ("decfunc".center(50,'='))
             pass
         else:
             print ("Error! : function contetns is not Block")
-
-        for i in self.contents.contents:
-            print(i.get_all_local_value())
-        return 
+        return self.contents.get_all_local_value()
 
 
 class DecValue(Elem):
@@ -1133,6 +1153,15 @@ class DecValue(Elem):
     def __repr__(self): # public 関数のときの表示
         return f"<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
 
+    def get_all_local_value(self):
+        rlist:list = list()
+        if self.contents is not None:
+            for i in self.contents:
+                local_value = i.get_all_local_value()
+                rlist += local_value
+        rlist += [copy.copy(self)]
+        return rlist
+
 class Expr(Elem): # Exprは一時的なものである
     """
     # Expr
@@ -1152,6 +1181,13 @@ class Expr(Elem): # Exprは一時的なものである
 
     def __repr__(self):
         return f"<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
 
 class ControlStatement(Elem):
     """
@@ -1191,6 +1227,13 @@ class ControlStatement(Elem):
     def resolve_self(self):
         expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
         self.contents = expr_parser.resolve()
+    
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
 
 # === Parser ===
 
