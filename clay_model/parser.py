@@ -658,7 +658,7 @@ contents:({self.contents})>"""
         # get_all_local_value
         持たない場合は空リストを返却する
         """
-        print(f"{type(self).__name__} get_all_local_value 未実装")
+        # print(f"{type(self).__name__} get_all_local_value 未実装")
         return []
 
 ## Elements
