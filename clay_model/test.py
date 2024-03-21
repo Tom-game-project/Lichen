@@ -31,8 +31,7 @@ class Tester:
             else:
                 print("error!")
                 print(res)
-        
-
+     
 
 def __test_00():
     print("""
@@ -137,7 +136,24 @@ else
 	print(num);
 }
 """,
-"let a:i32;"
+"let a:i32;",
+"""
+fn func00(a : bool) : bool{
+    if (a){
+        let r = True;
+        return r;
+    }else{
+        let r = False;
+        return r
+    };
+}
+""",
+"""
+fn func00(a : bool) : bool{
+    let r = True;
+    return r;
+}
+"""
     ]
 
     for i,testcase in enumerate(expr_test_cases):
@@ -146,6 +162,9 @@ else
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample state: ",testcase)
         print("result: ",codelist)
+        print("get_all_local_value result")
+        if type(codelist[0]) is parser.DecFunc:
+            print(codelist[0].get_all_local_value()) # print all contents of decfunc contents
         print()
 
 def __test_04():
@@ -385,4 +404,5 @@ if __name__=="__main__":
     __test_03()
     #__test_06()
     #__diff_test_00()
-    __diff_test_01()
+    # __diff_test_01()
+

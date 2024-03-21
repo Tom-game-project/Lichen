@@ -363,6 +363,8 @@ mod tests {
 
     #[test]
     fn test_00() {
+        /// # code2vec test
+        /// 
         let code = "{a = \"hello world\";}".to_string();
         let parser = Parser::new(&code);
         let codelist = parser.code2vec();
@@ -376,5 +378,10 @@ mod tests {
                 println!("{}",e);
             }
         }
+    }
+
+    #[test]
+    fn test_01() {
+
     }
 }

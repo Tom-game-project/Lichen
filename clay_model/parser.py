@@ -11,8 +11,9 @@ import copy
 class Parser:
     # resolve <expr>
     # 式を解決します
-    def __init__(self, code:str) -> None:
+    def __init__(self, code:str,depth = 0) -> None:
         self.code:str = code
+        self.depth = depth
 
         # setting
         ## <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
@@ -129,7 +130,7 @@ class Parser:
                     if open_flag:
                         group.append(inner)
                         rlist.append(
-                            String(None,"".join(group))
+                            String(None,"".join(group),self.depth)
                         )
                         group.clear()
                         open_flag = False
@@ -173,7 +174,7 @@ class Parser:
                 if depth > 0:
                     group.append(i)
                 elif depth == 0:
-                    rlist.append(ObjectInstance(None,copy.copy(group)))
+                    rlist.append(ObjectInstance(None,copy.copy(group),self.depth))
                     group.clear()
                 else:
                     print("Error!")
@@ -204,23 +205,23 @@ class Parser:
             if isinstance(i,Elem):# Elemクラスを継承しているかどうか調べる
                 # すでにrole決定済み
                 if group:
-                    rlist.append(Word(None,''.join(group)))
+                    rlist.append(Word(None,''.join(group),self.depth))
                     group.clear()
                 rlist.append(i)
             elif i in split:
                 # 区切り文字
                 if group:
-                    rlist.append(Word(None,''.join(group)))
+                    rlist.append(Word(None,''.join(group),self.depth))
                     group.clear()
             elif i in ope_chars:
                 if group:
-                    rlist.append(Word(None,''.join(group)))
+                    rlist.append(Word(None,''.join(group),self.depth))
                     group.clear()
                 rlist.append(i)
             else:
                 group.append(i) 
         if group:
-            rlist.append(Word(None,''.join(group)))
+            rlist.append(Word(None,''.join(group),self.depth))
             group.clear()
         return rlist
     
@@ -254,7 +255,8 @@ class Parser:
                             Syntax(
                                 name.get_contents(),
                                 None,
-                                block.get_contents()
+                                block.get_contents(),
+                                self.depth
                             )
                         )
                     elif len(group) == 3:
@@ -265,7 +267,8 @@ class Parser:
                             Syntax(
                                 name.get_contents(),
                                 paren.get_contents(),
-                                block.get_contents()
+                                block.get_contents(),
+                                self.depth
                             )
                         )
                     else:
@@ -302,6 +305,7 @@ class Parser:
                         ObjectInstance(
                             name_tmp.get_contents(),# func name
                             self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
+                            self.depth
                     ))
                     name_tmp = None
                     flag = False
@@ -363,7 +367,7 @@ class Parser:
             else: # flagを下げるべきとき
                 if flag:
                     if group:
-                        rlist.append(List(expr,copy.copy(group)))
+                        rlist.append(List(expr,copy.copy(group),self.depth))
                         expr = None
                         group.clear()
                     else:
@@ -385,7 +389,7 @@ class Parser:
         if group or expr is not None:# なにか、残っている場合
             if flag:
                 if group:
-                    rlist.append(List(expr,copy.copy(group)))
+                    rlist.append(List(expr,copy.copy(group),self.depth))
                     expr = None
                     group.clear()
                 else:
@@ -421,7 +425,7 @@ class Parser:
                     pass
                 elif ope_size == len(group):
                     if ope_tmp == ope:
-                        rlist.append(Operator(ope))
+                        rlist.append(Operator(ope,self.depth))
                     else:
                         rlist += group
                     group.clear()
@@ -435,7 +439,7 @@ class Parser:
                     group.clear()
                 elif ope_size == len(group):
                     if ope_tmp == ope:
-                        rlist.append(Operator(ope))
+                        rlist.append(Operator(ope,self.depth))
                     else:
                         rlist += group
                     group.clear()
@@ -585,7 +589,8 @@ class Parser:
             post_group:list = vec[operation_index + 1:]
             return [Func(
                 vec[operation_index], # operation name (func name)
-                [pre_group,post_group]# operation args (func args)
+                [pre_group,post_group],# operation args (func args)
+                self.depth
             )]
         else:
             return vec
@@ -612,9 +617,10 @@ class Elem:
     """
     字句解析用データ型
     """
-    def __init__(self, name:str, contents:str) -> None:
+    def __init__(self, name:str, contents:str,depth:int) -> None:
         self.name = name
         self.contents = contents
+        self.depth = depth
 
     def get_contents(self):return self.contents
 
@@ -634,9 +640,26 @@ class Elem:
         それぞれのデータ型で再帰的に処理をする
         """
         print(f"resolve_self 未実装 {type(self).__name__}")
-    
-    def __repr__(self):return f"<{type(self).__name__} name:({self.name}) contents:({self.contents})>"
 
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) contents:({self.contents})>"
+
+    def show(self):
+        """
+        # show
+        TODO 
+        階層構造を見やすく表示します
+        """
+        return " "*self.depth + f"""<{type(self).__name__} name:({self.name})
+contents:({self.contents})>"""
+    
+    def get_all_local_value(self):
+        """
+        # get_all_local_value
+        持たない場合は空リストを返却する
+        """
+        print(f"{type(self).__name__} get_all_local_value 未実装")
+        return []
 
 ## Elements
 ### basic elements
@@ -650,11 +673,19 @@ class Block(Elem):
     # returns
     get_contents -> <proc>
     """
-    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+    def __init__(self, name: str, contents: str, depth:int) -> None:super().__init__(name, contents,depth)
 
     def resolve_self(self):
-        state_parser = State_parser(self.contents)
+        state_parser = State_parser(self.contents, depth = self.depth + 1)
         self.contents = state_parser.resolve()
+
+    def get_all_local_value(self) -> list[Elem]:
+        rlist:list = list()
+        for i in self.contents:
+            # ローカル変数を含んだリスト
+            local_vlaue:list = i.get_all_local_value()
+            rlist += local_vlaue
+        return rlist
 
 class String(Elem):
     """
@@ -664,7 +695,8 @@ class String(Elem):
     # returns
     get_contents -> <string> or <char>
     """
-    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+    def __init__(self, name: str, contents: str, depth: int) -> None:
+        super().__init__(name, contents, depth)
 
     def resolve_self(self):
         """
@@ -685,10 +717,11 @@ class ListBlock(Elem):
 
     def resolve_self(self):
         expr = self.get_contents()
-        parser = Parser(expr)
+        parser = Parser(expr, depth = self.depth + 1)
         self.contents = [self.resolve_self_unit(i) for i in parser.resolve()]
 
-    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+    def __init__(self, name: str, contents: str, depth: int) -> None:
+        super().__init__(name, contents, depth)
 
 class ParenBlock(Elem):
     """
@@ -702,13 +735,14 @@ class ParenBlock(Elem):
     # returns
     get_contents -> <expr>,... # 式集合 式の範囲で宣言集合になることはない
     """
-    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+    def __init__(self, name: str, contents: str, depth: int) -> None:
+        super().__init__(name, contents, depth)
 
     def resolve_self(self):
         expr = self.get_contents()
-        parser = Expr_parser(expr)
+        parser = Expr_parser(expr, depth = self.depth + 1)
         self.contents = parser.resolve()
-    
+
     def wat_format_gen(self):
         """
 # wat_format_gen
@@ -725,7 +759,8 @@ class Word(Elem):# Word Elemは仮どめ
     # returns
     get_contents -> <word>
     """
-    def __init__(self, name: str, contents: str) -> None:super().__init__(name, contents)
+    def __init__(self, name: str, contents: str, depth: int) -> None:
+        super().__init__(name, contents, depth)
 
     def resolve_self(self):
         """
@@ -763,8 +798,8 @@ class Syntax(Elem):
     get_expr -> <expr>
     get_contents -> {<proc>}
     """ 
-    def __init__(self, name: str, expr, contents) -> None:
-        super().__init__(name, contents)
+    def __init__(self, name: str, expr, contents, depth:int) -> None:
+        super().__init__(name, contents, depth)
         self.expr = expr
 
     def get_expr(self):
@@ -775,18 +810,25 @@ class Syntax(Elem):
         # resolve_self
         ## if while for loop などを解決する
         """
-        state_parser = State_parser(self.contents)
+        state_parser = State_parser(self.contents, depth = self.depth + 1)
         self.contents = state_parser.resolve()
         # expr は Noneである可能性があることに注意
         if self.expr is not None:
-            expr_parser = Expr_parser(self.expr)
+            expr_parser = Expr_parser(self.expr, depth = self.depth + 1)
             self.expr = expr_parser.resolve()
         else:
             pass
 
     def __repr__(self):
         # override
-        return f"<{type(self).__name__} name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
+        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
 
 class SyntaxBox(Elem):
     """
@@ -794,19 +836,27 @@ class SyntaxBox(Elem):
     if elif else,loop else,while elseなどの連続して解釈されるコードを集めます
     
     """
-    def __init__(self, name: str, contents: list[Syntax]) -> None:
-        super().__init__(name, contents)
+    def __init__(self, name: str, contents: list[Syntax], depth:int) -> None:
+        super().__init__(name, contents, depth)
 
     def resolve_self(self):
         """
         listの各要素は、すべてSyntaxになっているはずなので、
         それぞれのsyntax要素のresolve_self methodを呼び出せば良い
+        ここではparserを呼び出さないのでdepthを深くしない
         """
         for i in self.contents:
             i.resolve_self()
 
-    def __repr__(self):
-        return f"<{type(self).__name__} name:({self.name}) args:({self.contents})>"
+    # def __repr__(self):
+    #     return f"<{type(self).__name__} name:({self.name}) args:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
 
 class Func(Elem):
     """
@@ -817,8 +867,8 @@ class Func(Elem):
     get_contents -> (args:[<expr>,...])
     get_name -> (funcname: <name>)
     """
-    def __init__(self, name: str, contents: list) -> None:
-        super().__init__(name, contents)
+    def __init__(self, name: str, contents: list, depth:int) -> None:
+        super().__init__(name, contents, depth)
         self.ope_correspondence_table = {
             # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
             "+":"i32.add", # add
@@ -884,16 +934,15 @@ class Func(Elem):
         return wasm_code
 
     def resolve_self_unit(self,expr:list):
-        parser = Expr_parser(expr)
-        print(expr)
+        parser = Expr_parser(expr, depth = self.depth + 1)
         return parser.resolve()
 
     def resolve_self(self):
         args = self.get_contents()
         self.contents = [self.resolve_self_unit(i) for i in args]
 
-    def __repr__(self):
-        return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
+    # def __repr__(self):
+    #     return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
 
 class List(Elem):
     """
@@ -913,13 +962,13 @@ class List(Elem):
     get_contents -> (index:[<expr,...>])
     get_name -> (listname:<name>)
     """
-    def __init__(self, expr: str, index: list[ListBlock]) -> None:
-        super().__init__(None, None)
+    def __init__(self, expr: str, index: list[ListBlock],depth:int) -> None:
+        super().__init__(None, None, depth)
         self.expr = expr
         self.index_list = index
 
     def resolve_self_unit(self,expr):
-        expr_parser = Expr_parser(expr)
+        expr_parser = Expr_parser(expr, depth = self.depth + 1)
         return expr_parser.resolve()
 
     def resolve_self(self):
@@ -937,7 +986,7 @@ class List(Elem):
         self.index_list = [self.resolve_self_unit(i.get_contents()) for i in self.index_list]
 
     def __repr__(self):
-        return f"<{type(self).__name__} expr:({self.expr}) index:({self.index_list})>"
+        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.expr}) index:({self.index_list})>"
 
 class Operator(Elem):
     """
@@ -945,20 +994,20 @@ class Operator(Elem):
     get_contents -> ope(ope:["+","-","*","/",...])
     """
 
-    def __init__(self, ope:str) -> None:
-        super().__init__(None, ope)
+    def __init__(self, ope:str, depth:int) -> None:
+        super().__init__(None, ope, depth)
         self.ope = ope
 
     def __repr__(self):
-        return f"<{type(self).__name__} ope:({self.ope})>"
+        return f"<{type(self).__name__} depth:({self.depth}) ope:({self.ope})>"
 
 class Data(Elem):
     """
     # Data
     カンマ区切りのデータに対して処理を行います。
     """
-    def __init__(self,data:list) -> None:
-        super().__init__(None,None)
+    def __init__(self,data:list, depth:int) -> None:
+        super().__init__(None, None, depth)
         self.data:list = data
 
     def get_data(self):
@@ -967,15 +1016,15 @@ class Data(Elem):
     def __repr__(self):
         text:str = ""
         for i in self.data:text += repr(i) + ",\n"
-        return f"<{type(self).__name__} data:({text})>"
+        return f"<{type(self).__name__} depth:({self.depth}) data:({text})>"
 
 class Arg(Elem):
     """
     # ArgParse
     ## 引数エレメント
     """
-    def __init__(self, name: str, type_: str) -> None:
-        super().__init__(name, type_)
+    def __init__(self, name: str, type_: str, depth:int) -> None:
+        super().__init__(name, type_, depth)
 
 ### function declaration
 class DecFunc(Elem):
@@ -983,9 +1032,10 @@ class DecFunc(Elem):
     関数の宣言部分
     (pub) fn <name><parenblock>:<type> <block>
     args
+    TODO:decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
     """
-    def __init__(self, funcname:str,args:list,return_type, contents: Block,pub_flag:bool) -> None:
-        super().__init__(funcname, contents)
+    def __init__(self, funcname:str,args:list,return_type, contents: Block,pub_flag:bool, depth:int) -> None:
+        super().__init__(funcname, contents, depth)
         self.return_type = return_type
         self.args = args
         self.pub_flag  = pub_flag
@@ -1044,12 +1094,28 @@ class DecFunc(Elem):
         # resolve_self
         # TODO argsのtypeの処理
         """
-        parser = Parser(self.args)
+        parser = Parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+        return f"<{type(self).__name__} depth:({self.depth}) pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+
+    def get_all_local_value(self) -> list:
+        """
+        # get_all_local_value
+        decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
+        decvalueのリスト
+        """
+        rlist:list = list()
+        # error check
+        if type(self.contents) is Block:
+            #print ("decfunc".center(50,'='))
+            pass
+        else:
+            print ("Error! : function contetns is not Block")
+        return self.contents.get_all_local_value()
+
 
 class DecValue(Elem):
     """
@@ -1060,10 +1126,11 @@ class DecValue(Elem):
     get_content() -> 宣言の具体的な内容
     関数の宣言は代入とセットの場合がある
     """
-    def __init__(self,mutable:str, valuename: str, type_:str, contents:list,pub_flag = False) -> None:
+    def __init__(self,mutable:str, valuename: str, type_:str, contents:list, depth:int, pub_flag = False) -> None:
         super().__init__(
             valuename, # 宣言した変数(または定数)名
-            contents   # 初期化式、Noneの場合もある
+            contents,   # 初期化式、Noneの場合もある
+            depth
         )
         self.mutable = mutable# const or let
         self.type_ = type_ # 変数(または定数)の型
@@ -1078,13 +1145,22 @@ class DecValue(Elem):
         初期化式がある場合それを解決します
         """
         if self.contents is not None:
-            expr_parser = Expr_parser(self.contents)
+            expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
             self.contents = expr_parser.resolve()
         else:
             pass
 
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+        return f"<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        if self.contents is not None:
+            for i in self.contents:
+                local_value = i.get_all_local_value()
+                rlist += local_value
+        rlist += [copy.copy(self)]
+        return rlist
 
 class Expr(Elem): # Exprは一時的なものである
     """
@@ -1093,18 +1169,25 @@ class Expr(Elem): # Exprは一時的なものである
     ## returns
     get_contents() -> <expr>
     """
-    def __init__(self, name: str, contents: list) -> None:
-        super().__init__(name, contents)
+    def __init__(self, name: str, contents: list, depth:int) -> None:
+        super().__init__(name, contents, depth)
 
     def resolve_self(self):
         """
         # resolve_self
         """
-        expr_parser = Expr_parser(self.contents)
+        expr_parser = Expr_parser(self.contents,depth = self.depth)
         self.contents = expr_parser.resolve()
 
     def __repr__(self):
-        return f"<{type(self).__name__} expr:({self.contents})>"
+        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
 
 class ControlStatement(Elem):
     """
@@ -1126,8 +1209,8 @@ class ControlStatement(Elem):
     get_name() -> <name> (name| return, break, continue, assert)
     get_contents() -> <expr> 
     """
-    def __init__(self, name: str, expr: str) -> None:
-        super().__init__(name, expr)
+    def __init__(self, name: str, expr: str, depth:int) -> None:
+        super().__init__(name, expr, depth)
     
     def wat_format_gen(self):
         """
@@ -1142,8 +1225,15 @@ class ControlStatement(Elem):
         pass
 
     def resolve_self(self):
-        expr_parser = Expr_parser(self.contents)
+        expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
         self.contents = expr_parser.resolve()
+    
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
 
 # === Parser ===
 
@@ -1152,8 +1242,9 @@ class Expr_parser(Parser): # 式について解決します
     # expressions resolver
     ## 式について解決します
     """
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str,depth = 0) -> None:
         super().__init__(code)
+        self.depth = depth
 
     def grouping_syntaxbox(self,vec:list) -> list:
         """
@@ -1178,7 +1269,7 @@ class Expr_parser(Parser): # 式について解決します
                 elif i.get_name() == "else":
                     if flag:
                         group.append(i)
-                        rlist.append(SyntaxBox(name,copy.copy(group)))
+                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
                         group.clear()
                         name = None
                         flag = False
@@ -1189,7 +1280,7 @@ class Expr_parser(Parser): # 式について解決します
             else:
                 if flag:
                     if group:
-                        rlist.append(SyntaxBox(name,copy.copy(group)))
+                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
                         group.clear()
                         name = None
                     else: # group is empty
@@ -1199,7 +1290,7 @@ class Expr_parser(Parser): # 式について解決します
                     pass
                 rlist.append(i)
         if group:
-            rlist.append(SyntaxBox(name,copy.copy(group)))
+            rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
         return rlist
 
     def code2vec(self,code:str) ->list:
@@ -1238,8 +1329,9 @@ class State_parser(Parser): # 文について解決します
     TODO Parenblock内の引数宣言ex) (a:i32,b:i32)
     TODO 変数宣言時の明示的な型宣言 a:Vec<i32>
     """
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, depth = 0) -> None:
         super().__init__(code)
+        self.depth = depth
 
     def code2vec(self, code: str) -> list:
         # クォーテーションをまとめる
@@ -1298,7 +1390,7 @@ class State_parser(Parser): # 文について解決します
                 func_name = i.get_name()
                 func_args = i.get_contents()
             elif flag and  type(i) is Block:
-                rlist.append(DecFunc( func_name, copy.copy(func_args), copy.copy(rtype_group), i, pub_flag = False))
+                rlist.append(DecFunc( func_name, copy.copy(func_args), copy.copy(rtype_group), i, False, self.depth))
                 flag = False
                 return_type_flag = False
                 rtype_group.clear()
@@ -1376,7 +1468,7 @@ class State_parser(Parser): # 文について解決します
         """
         # __group_contents_decvalue
         """
-        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group)))
+        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group),self.depth))
         rtype_group.clear()
         contents_group.clear()
         value_name = None
@@ -1400,7 +1492,7 @@ class State_parser(Parser): # 文について解決します
                 name = i.get_contents() # name :example (return, break ,continue, assert)
                 flag = True
             elif type(i) is str and i == ';' and flag:
-                rlist.append(ControlStatement(name,copy.copy(expr_group)))
+                rlist.append(ControlStatement(name,copy.copy(expr_group),self.depth))
                 expr_group.clear()
                 flag = False
             elif flag:
@@ -1438,16 +1530,16 @@ class State_parser(Parser): # 文について解決します
         for i in vec:
             if any(map(lambda a:type (i) is a,excludes)):
                 if group:
-                    rlist.append(Expr(None,copy.copy(group)))
+                    rlist.append(Expr(None,copy.copy(group),self.depth))
                     group.clear()
                 rlist.append(i)
             elif type(i) is str and i == ";":
-                rlist.append(Expr(None,copy.copy(group)))
+                rlist.append(Expr(None,copy.copy(group),self.depth))
                 group.clear()
             else:
                 group.append(i)
         if group:
-            rlist.append(Expr(None,copy.copy(group)))
+            rlist.append(Expr(None,copy.copy(group),self.depth))
         return rlist
 
     def resolve(self):

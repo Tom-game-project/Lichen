@@ -17,6 +17,7 @@
     )
 
     (func $if_expr_test01
+    ;; if文の中にreturn がある場合
     (param $arg0 i32)
     (result i32)
     (local $i i32)
@@ -42,6 +43,10 @@
     end
     i32.const 0
     return
+    )
+
+    (func $if_expr_test03
+    ;; ループ内のif
     )
 
     (func $main
