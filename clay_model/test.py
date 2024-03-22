@@ -155,12 +155,12 @@ fn func00(a : bool) : bool{
 }
 """,
 """
-fn func00(a : bool) : bool{
-    let r = if (a){
-        let b = 10;
+fn func00(a :i32) : i32{
+    let r:i32 = if (a){
+        let val0:i32 = 10;
         b
     } else {
-        let c = 10;
+        let val1:i32 = 10;
         c
     };
     return r;
@@ -176,7 +176,9 @@ fn func00(a : bool) : bool{
         print("result: ",codelist)
         print("get_all_local_value result")
         if type(codelist[0]) is parser.DecFunc:
-            pprint(codelist[0].get_all_local_value()) # print all contents of decfunc contents
+            print(
+                codelist[0].wat_format_gen()
+            )
         print()
 
 def __test_04():

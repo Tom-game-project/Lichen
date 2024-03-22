@@ -1060,7 +1060,7 @@ class DecFunc(Elem):
                 else:
                     # name
                     name = j.get_contents()
-            rlist.append(Arg(name,type_))
+            rlist.append(Arg(name, type_, self.depth))
         return rlist
 
     def wat_format_gen(self) -> str:
@@ -1085,6 +1085,12 @@ class DecFunc(Elem):
         for i in args:
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
         wasm_code += "(resulut {})\n".format(r_type[0].get_contents())
+        for i in self.get_all_local_value():
+            type_ = i.get_type()
+            # TODO: default is i32 あとで型の推論をできるように実装
+            # TODO: 様々な型に対応させる
+            # print("local","$"+i.get_name(),type_[0].contents if type_ else "i32")
+            wasm_code += ' '.join(["(local","$"+i.get_name(),(type_[0].contents if type_ else "i32") + ")\n"])
         # TODO : ここに処理を書く
         wasm_code += ")\n" # close func
         return wasm_code
@@ -1115,7 +1121,6 @@ class DecFunc(Elem):
         else:
             print ("Error! : function contetns is not Block")
         return self.contents.get_all_local_value()
-
 
 class DecValue(Elem):
     """
