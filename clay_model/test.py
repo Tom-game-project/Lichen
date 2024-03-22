@@ -153,6 +153,18 @@ fn func00(a : bool) : bool{
     let r = True;
     return r;
 }
+""",
+"""
+fn func00(a : bool) : bool{
+    let r = if (a){
+        let b = 10;
+        b
+    } else {
+        let c = 10;
+        c
+    };
+    return r;
+}
 """
     ]
 
@@ -164,7 +176,7 @@ fn func00(a : bool) : bool{
         print("result: ",codelist)
         print("get_all_local_value result")
         if type(codelist[0]) is parser.DecFunc:
-            print(codelist[0].get_all_local_value()) # print all contents of decfunc contents
+            pprint(codelist[0].get_all_local_value()) # print all contents of decfunc contents
         print()
 
 def __test_04():
