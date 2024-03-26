@@ -76,6 +76,12 @@ class Parser:
             "for",
             "while"
         ]
+        self.syntax_words_heads = [
+            "if",
+            "loop",
+            "for",
+            "while",
+        ]
         # const
         self.ESCAPESTRING = "\\"
         self.FUNCTION = "fn"
@@ -656,6 +662,8 @@ contents:({self.contents})>"""
     def get_all_local_value(self):
         """
         # get_all_local_value
+
+        関数内に存在するローカル変数宣言をすべて取得する
         持たない場合は空リストを返却する
         """
         # print(f"{type(self).__name__} get_all_local_value 未実装")
@@ -686,6 +694,17 @@ class Block(Elem):
             local_vlaue:list = i.get_all_local_value()
             rlist += local_vlaue
         return rlist
+
+    def wat_format_gen(self) -> str:
+        """
+        # wat_format_gen 
+        各々の要素に対してwatcodeを生成させる
+        """
+        wasm_code:str = str()
+        for i in self.contents:
+            wasm_code += i.wat_format_gen()
+        return wasm_code
+        # return "<処理>"
 
 class String(Elem):
     """
@@ -812,7 +831,6 @@ class Syntax(Elem):
         """
         state_parser = State_parser(self.contents, depth = self.depth + 1)
         self.contents = state_parser.resolve()
-        # expr は Noneである可能性があることに注意
         if self.expr is not None:
             expr_parser = Expr_parser(self.expr, depth = self.depth + 1)
             self.expr = expr_parser.resolve()
@@ -829,6 +847,96 @@ class Syntax(Elem):
             local_value = i.get_all_local_value()
             rlist += local_value
         return rlist
+    
+    def wat_format_gen(self,syntax_head:str) -> str:
+        """
+        # wat_format_gen 
+        TODO:これは、非効率的な実装、あとで書き直す
+        ## pattern
+        - if 
+          - if
+          - elif
+          - else
+        - loop
+          - loop
+          - else
+        - while
+          - while
+          - else
+        - for
+          - for
+          - else
+        """
+        wasm_code = ""
+        if syntax_head == "if":
+            if self.name == "if":
+                if self.expr: # <式>
+                    wasm_code += self.expr[0].wat_format_gen()
+                else:
+                    # ifに条件式が与えられていない場合
+                    raise BaseException("Error!")
+                wasm_code += "if\n"
+                if self.contents: # ブロック内の処理
+                    wasm_code += self.contents[0].wat_format_gen()
+                else:
+                    raise BaseException("Error!")
+
+            elif self.name == "elif":
+                """
+                # elif
+                ```wat
+                else
+                ;; <式>
+                if
+                ;; <処理>
+                ```
+                """
+                wasm_code += "else"
+                if self.expr:# <式>
+                    wasm_code += self.expr[0].wat_format_gen()
+                else: # ifに条件式が与えられていない場合
+                    raise BaseException("Error!")
+                wasm_code += "if"
+                if self.contents: # ブロック内の処理
+                    wasm_code += self.contents[0].wat_format_gen()
+                else:
+                    raise BaseException("Error!")
+
+            elif self.name == "else":
+                if self.expr:
+                    wasm_code += self.expr[0].wat_format_gen()
+                else:
+                    # ifに条件式が与えられていない場合
+                    raise BaseException("Error!")
+                wasm_code += "else"
+                
+            else:
+                raise BaseException("Error!")
+        elif syntax_head == "loop":
+            if self.name == "loop":
+                pass#TODO
+            elif self.name == "else":
+                pass#TODO
+            else:
+                raise BaseException("Error!")
+        elif syntax_head == "while":
+            if self.name == "while":
+                pass#TODO
+            elif self.name == "else":
+                pass#TODO
+            else:
+                raise BaseException("Error!")
+        elif syntax_head == "for":
+            if self.name == "for":
+                pass#TODO
+            elif self.name == "else":
+                pass#TODO
+            else:
+                raise BaseException("Error!")
+        else:
+            raise BaseException("Error!")
+
+        return wasm_code
 
 class SyntaxBox(Elem):
     """
@@ -857,6 +965,45 @@ class SyntaxBox(Elem):
             local_value = i.get_all_local_value()
             rlist += local_value
         return rlist
+
+
+    def __count_name(self,name:str) -> int:
+        """
+        # __count 
+        contentsボックス内の特定のsyntaxを数えます
+        """
+        counter:int = 0
+        for i in self.contents:
+            if i.name == name:
+                counter += 1
+        return counter
+
+    def wat_format_gen(self) -> str:
+        """
+        # wat_format_gen 
+        制御文や、制御式をwasmにして返す
+        - if
+        - loop
+        - for
+        - while
+        # TODO:if文の実装
+        """
+        wasm_code = ""
+        if self.name == "if":
+            # if 返り値用変数
+            wasm_code += "(local $#rif i32)\n" # TODO
+            for i in self.contents:wasm_code+=i.wat_format_gen("if")# if elif else
+            for i in self.__count_name("elif"):wasm_code += "end\n" # elif end
+            wasm_code += "end\n"                                    # else end
+        elif self.name == "loop":
+            pass
+        elif self.name == "while":
+            pass
+        elif self.name == "for":
+            pass
+        else:
+            raise BaseException("Error!")
+        return wasm_code
 
 class Func(Elem):
     """
@@ -1060,7 +1207,7 @@ class DecFunc(Elem):
                 else:
                     # name
                     name = j.get_contents()
-            rlist.append(Arg(name,type_))
+            rlist.append(Arg(name, type_, self.depth))
         return rlist
 
     def wat_format_gen(self) -> str:
@@ -1085,7 +1232,18 @@ class DecFunc(Elem):
         for i in args:
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
         wasm_code += "(resulut {})\n".format(r_type[0].get_contents())
+        for i in self.get_all_local_value():
+            type_ = i.get_type()
+            # TODO: default is i32 あとで型の推論をできるように実装
+            # TODO: 様々な型に対応させる
+            # print("local","$"+i.get_name(),type_[0].contents if type_ else "i32")
+            wasm_code += ' '.join(["(local","$"+i.get_name(),(type_[0].contents if type_ else "i32") + ")\n"])
         # TODO : ここに処理を書く
+        if self.contents:
+            # self.contents[0]はBlock
+            wasm_code += self.contents[0].wat_format_gen()
+        else:
+            raise BaseException("Error!")
         wasm_code += ")\n" # close func
         return wasm_code
 
@@ -1115,7 +1273,6 @@ class DecFunc(Elem):
         else:
             print ("Error! : function contetns is not Block")
         return self.contents.get_all_local_value()
-
 
 class DecValue(Elem):
     """
@@ -1257,7 +1414,7 @@ class Expr_parser(Parser): # 式について解決します
         rlist:list = list()
         for i in vec:
             if type(i) is Syntax:
-                if i.get_name() in ["if", "loop", "while", "for"]:
+                if i.get_name() in self.syntax_words_heads:
                     flag = True
                     name = i.get_name()
                     group.append(i)
