@@ -139,7 +139,7 @@ else
 "let a:i32;",
 """
 fn func00(a : bool) : bool{
-    if (a){
+    if (0 < a){
         let r = True;
         return r;
     }else{
@@ -164,6 +164,11 @@ fn func00(a :i32) : i32{
         c
     };
     return r;
+}
+""",
+"""
+fn aa():i32{
+    print();
 }
 """
     ]
