@@ -1,4 +1,4 @@
-import parser
+import lichen
 
 import difflib
 from pprint import pprint
@@ -43,7 +43,7 @@ def __test_01():
     print("""
 
 """)
-    a = parser.Parser("")
+    a = lichen.Parser("")
     # expr test cases
     test_cases:list = list()
     with open("../examples/ex03.lc") as f :test_cases = [i for i in f]
@@ -58,7 +58,7 @@ def __test_02():
 """
 # __test_02
 """)
-    a = parser.Parser("")
+    a = lichen.Parser("")
     # expr test cases
     statement_test_cases = [
 """
@@ -177,14 +177,14 @@ fn aa():i32{
     ]
 
     for i,testcase in enumerate(expr_test_cases):
-        a = parser.State_parser(testcase) #constract expr parser
+        a = lichen.State_parser(testcase) #constract expr parser
         codelist = a.resolve()
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample state: ",testcase)
         # print("result: ",codelist)
         for elem in codelist:
             # print(elem)
-            if elem is parser.DecFunc:
+            if elem is lichen.DecFunc:
                 print(elem)
                 print(elem.wat_format_gen())
             else:
@@ -213,7 +213,7 @@ def __test_04():
         "if (expr){return 1;}elif (expr2){pass;}else{return 0;} + loop {break 4;}"
     ]
     
-    a = parser.Expr_parser("")
+    a = lichen.Expr_parser("")
     for i,testcase in enumerate(expr_test_cases):
         codelist = a.code2vec(testcase)
         print(i)
@@ -236,7 +236,7 @@ def __test_05():
     ]
     
     for testcase in expr_test_cases:
-        a = parser.Parser(testcase)
+        a = lichen.Parser(testcase)
         codelist = a.resolve()
         print("sample expr:",testcase)
         pprint(codelist)
@@ -314,7 +314,7 @@ a = if (a % 2 == 0){
     ]
     
     for i,testcase in enumerate(expr_test_cases):
-        a = parser.Expr_parser(testcase)
+        a = lichen.Expr_parser(testcase)
         codelist = a.resolve()
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample expr:",testcase)
@@ -378,7 +378,7 @@ call $gcd
     input_list = []
     for i in test_list:
         print("sample:",i)
-        expr_parser = parser.Expr_parser(i)
+        expr_parser = lichen.Expr_parser(i)
         codelist = expr_parser.resolve()
         wasm = codelist[0].wat_format_gen()
         print(wasm)
@@ -408,7 +408,7 @@ pub fn f(a:i32,b:i32):i32{
     input_list = []
     for i in test_list:
         print("sample:",i)
-        expr_parser = parser.State_parser(i)
+        expr_parser = lichen.State_parser(i)
         codelist = expr_parser.resolve()
         print(codelist)
         print()
