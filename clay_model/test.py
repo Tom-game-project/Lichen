@@ -178,7 +178,7 @@ fn aa():i32{
         codelist = a.resolve()
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample state: ",testcase)
-        print("result: ",codelist)
+        # print("result: ",codelist)
         print("get_all_local_value result")
         if type(codelist[0]) is parser.DecFunc:
             print(

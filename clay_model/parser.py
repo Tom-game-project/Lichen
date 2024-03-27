@@ -412,8 +412,7 @@ class Parser:
         str | None
         """
         for i in ordered_opelist:
-            if text == i:
-                return text
+            if text == i:return text
         return None
 
     def grouping_operator_unit(self,vec:list,ope:str):
@@ -618,6 +617,7 @@ class Parser:
             rlist.append(self.__resolve_func_arg_unit(i))
         return rlist
 
+
 # Base Elem
 class Elem:
     """
@@ -637,8 +637,7 @@ class Elem:
         # wat_format_gen
 
         """
-        print("未実装")
-        return "まだ実装できてないよ〜"
+        return f"({type(self).__name__} 未実装)"
 
     def resolve_self(self):
         """
@@ -1240,8 +1239,8 @@ class DecFunc(Elem):
             wasm_code += ' '.join(["(local","$"+i.get_name(),(type_[0].contents if type_ else "i32") + ")\n"])
         # TODO : ここに処理を書く
         if self.contents:
-            # self.contents[0]はBlock
-            wasm_code += self.contents[0].wat_format_gen()
+            # self.contentsはBlock
+            wasm_code += self.contents.wat_format_gen()
         else:
             raise BaseException("Error!")
         wasm_code += ")\n" # close func
@@ -1368,18 +1367,18 @@ class ControlStatement(Elem):
     """
     def __init__(self, name: str, expr: str, depth:int) -> None:
         super().__init__(name, expr, depth)
-    
-    def wat_format_gen(self):
-        """
-        # wat_format_gen
-        ## 
-        場合によって大きく対応が変わるので注意
-        - ループ内にあるばあい
-        - else
-        - if elif else文にある場合
-        - else
-        """
-        pass
+
+    # def wat_format_gen(self):
+    #     """
+    #     # wat_format_gen
+    #     ## 
+    #     場合によって大きく対応が変わるので注意
+    #     - ループ内にあるばあい
+    #     - else
+    #     - if elif else文にある場合
+    #     - else
+    #     """
+    #     return "<contentStatement処理>"
 
     def resolve_self(self):
         expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
@@ -1393,6 +1392,7 @@ class ControlStatement(Elem):
         return rlist
 
 # === Parser ===
+
 
 class Expr_parser(Parser): # 式について解決します
     """
@@ -1476,6 +1476,7 @@ class Expr_parser(Parser): # 式について解決します
         for i in codelist: # 再帰
             i.resolve_self()
         return codelist
+
 
 class State_parser(Parser): # 文について解決します
     """
@@ -1705,6 +1706,7 @@ class State_parser(Parser): # 文について解決します
             i.resolve_self()
         return codelist
 
+
 # Type_Elem
 class Type_Elem(Elem):
     """
@@ -1730,9 +1732,10 @@ class Type_f64(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
 
-class Type_Char(Type_Elem):
+class Type_char(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
+
 
 # typeの解析
 class Type_parser(Parser):
