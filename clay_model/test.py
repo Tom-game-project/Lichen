@@ -96,15 +96,18 @@ def __test_03():
 fn add(a:i32,b:i32):i32{
     return a + b;
 }
+
 pub fn sub(a:i32,b:i32):i32{
     let c = a - b;
     return c;
 }
-let c = add(1,2);
-let d:i32 = a / (b*(c+d));
-c += 1;
-d = d + 42;
-return d;
+fn main (){
+    let c = add(1,2);
+    let d:i32 = a / (b*(c+d));
+    c += 1;
+    d = d + 42;
+    return d;
+}
 """,
 """
 let a = if (expr){return 0;}else{return 1} + a;
@@ -179,11 +182,13 @@ fn aa():i32{
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample state: ",testcase)
         # print("result: ",codelist)
-        print("get_all_local_value result")
-        if type(codelist[0]) is parser.DecFunc:
-            print(
-                codelist[0].wat_format_gen()
-            )
+        for elem in codelist:
+            # print(elem)
+            if elem is parser.DecFunc:
+                print(elem)
+                print(elem.wat_format_gen())
+            else:
+                print (elem + "is not dec")
         print()
 
 def __test_04():
@@ -329,11 +334,6 @@ def __diff_test_00():
         "3+2*5",
         "gcd(b,a%b)",
         "b = 97 <= a && a<= 122",
-"""
-pub fn f(a:i32,b:i32):i32{
-    print_i32(1);
-}
-"""
     ]
     output_list:list = [
 """
@@ -410,6 +410,8 @@ pub fn f(a:i32,b:i32):i32{
         print("sample:",i)
         expr_parser = parser.State_parser(i)
         codelist = expr_parser.resolve()
+        print(codelist)
+        print()
         wasm = codelist[0].wat_format_gen()
         print(wasm)
         input_list.append(wasm)
@@ -423,5 +425,5 @@ if __name__=="__main__":
     __test_03()
     #__test_06()
     #__diff_test_00()
-    # __diff_test_01()
+    #__diff_test_01()
 

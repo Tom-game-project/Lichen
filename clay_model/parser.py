@@ -632,12 +632,12 @@ class Elem:
 
     def get_name(self):return self.name
 
-    def wat_format_gen(self):
+    def wat_format_gen(self) -> str:
         """
         # wat_format_gen
 
         """
-        return f"({type(self).__name__} 未実装)"
+        return f"({type(self).__name__} 未実装)\n"
 
     def resolve_self(self):
         """
@@ -1317,6 +1317,11 @@ class DecValue(Elem):
                 rlist += local_value
         rlist += [copy.copy(self)]
         return rlist
+    
+    # def wat_format_gen(self) -> str:
+    #     wasm_code = ""
+        
+    #     return ""
 
 class Expr(Elem): # Exprは一時的なものである
     """
@@ -1368,17 +1373,32 @@ class ControlStatement(Elem):
     def __init__(self, name: str, expr: str, depth:int) -> None:
         super().__init__(name, expr, depth)
 
-    # def wat_format_gen(self):
-    #     """
-    #     # wat_format_gen
-    #     ## 
-    #     場合によって大きく対応が変わるので注意
-    #     - ループ内にあるばあい
-    #     - else
-    #     - if elif else文にある場合
-    #     - else
-    #     """
-    #     return "<contentStatement処理>"
+    def wat_format_gen(self):
+        """
+        # wat_format_gen
+        ## 
+        場合によって大きく対応が変わるので注意
+        - ループ内にあるばあい
+        - else
+        - if elif else文にある場合
+        - else
+        """
+        wasm_code = ""
+        for i in self.contents:
+            wasm_code += i.wat_format_gen()
+        
+        #
+        if self.name == "return":
+            wasm_code += "return\n"
+        elif self.name == "break":
+            pass
+        elif self.name == "continue":
+            pass
+        elif self.name == "assert":
+            pass
+        else:
+            raise BaseException("Error!")
+        return wasm_code
 
     def resolve_self(self):
         expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
