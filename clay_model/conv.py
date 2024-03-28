@@ -2,7 +2,7 @@
 # conv.py
 ## convert lichen to wasm text format
 """
-import parser
+import lichen
 
 class lc2wat_compiler:
     """
@@ -10,10 +10,10 @@ class lc2wat_compiler:
     ## lichen をwatに変換します
     
     """
-    def __init__(self,codelist:list["parser.Elem"]):
+    def __init__(self,codelist:list["lichen.Elem"]):
         self.module = "(module {0})"
         self.func = "func {0}"
-        self.code:list["parser.Elem"] = codelist
+        self.code:list["lichen.Elem"] = codelist
 
         # wasm setting
         self.num_t = [

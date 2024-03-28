@@ -1230,7 +1230,10 @@ class DecFunc(Elem):
         wasm_code += "(func ${}\n".format(funcname) # open func    
         for i in args:
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
-        wasm_code += "(resulut {})\n".format(r_type[0].get_contents())
+        if r_type: # TODO: 自作の型などについての設定
+            wasm_code += "(result {})\n".format(r_type[0].get_contents())
+        else:
+            raise BaseException("返り値が設定されていません")
         for i in self.get_all_local_value():
             type_ = i.get_type()
             # TODO: default is i32 あとで型の推論をできるように実装
