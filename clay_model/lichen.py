@@ -43,6 +43,7 @@ class Parser:
             "-=":-4,
             "*=":-4,
             "/=":-4,
+            "%=":-4,
             # 二乗
             "**":3,
         }
@@ -1014,7 +1015,7 @@ class Func(Elem):
     """
     def __init__(self, name: str, contents: list, depth:int) -> None:
         super().__init__(name, contents, depth)
-        self.ope_correspondence_table = {
+        self.wasm_ope_correspondence_table = {
             # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
             "+":"i32.add", # add
             "-":"i32.sub", # sub 
@@ -1035,10 +1036,20 @@ class Func(Elem):
             # TODO
             "=":"local.set"
         }
+        self.wasm_special_ope_correspondence_table:list = {
+            "+=":"i32.add",
+            "-=":"i32.sub",
+            "*=":"i32.mul",
+            "/=":"i32.div_u",
+            "%=":"i32.rem_u",
+        }
     
     def wat_format_gen(self) -> str:
         """
-        # wat_format_gen
+        # Func.wat_format_gen
+        
+        ## TODO:否定!などのprefixについての処理
+
         """
         wasm_code = ""
         call_name:str = None
@@ -1058,9 +1069,21 @@ class Func(Elem):
                     # a = b
                     # かならず引数は2つになるはずなのでそれ以外の場合はError!
                     raise BaseException("Error!")
+            elif self.name.get_contents() in self.wasm_special_ope_correspondence_table:
+                # 
+                # 演算子は両脇に2つの引数を取る
+                wasm_code = ""
+                self.contents[0] # right:dist
+                self.contents[1] # left:expr
+                wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
+                # print("-"*50,self.contents[1][0])
+                wasm_code += self.contents[1][0].wat_format_gen()
+                wasm_code += "local.set ${}\n".format(self.contents[0][0].contents)
             else:
                 # 普通の演算子(代入やincrではない)場合
-                call_name = self.ope_correspondence_table[self.name.get_contents()]
+                #
+                # 特別な演算子、incr decrの場合は別の処理をする
+                call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
                 for i in self.contents: # per arg
                     if len(i) == 0:        # TODO
                         pass
@@ -1367,6 +1390,15 @@ class Expr(Elem): # Exprは一時的なものである
             local_value = i.get_all_local_value()
             rlist += local_value
         return rlist
+
+    def wat_format_gen(self) -> str:
+        wasm_code = ""
+        if self.contents:
+            wasm_code += self.contents[0].wat_format_gen()
+        else:
+            # self.contentsがからである場合
+            pass
+        return wasm_code
 
 class ControlStatement(Elem):
     """

@@ -101,7 +101,7 @@ pub fn sub(a:i32,b:i32):i32{
     let c = a - b;
     return c;
 }
-fn main ():void{
+fn main (a:i32,b:i32):void{
     let c = add(1,2);
     let d:i32 = a / (b*(c+d));
     c += 1;
