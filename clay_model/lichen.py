@@ -1072,9 +1072,6 @@ class Func(Elem):
             elif self.name.get_contents() in self.wasm_special_ope_correspondence_table:
                 # 
                 # 演算子は両脇に2つの引数を取る
-                wasm_code = ""
-                self.contents[0] # right:dist
-                self.contents[1] # left:expr
                 wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
                 # print("-"*50,self.contents[1][0])
                 wasm_code += self.contents[1][0].wat_format_gen()
@@ -1253,7 +1250,10 @@ class DecFunc(Elem):
         for i in args:
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
         if r_type: # TODO: 自作の型などについての設定
-            wasm_code += "(result {})\n".format(r_type[0].get_contents())
+            if r_type[0].get_contents() == "void":
+                pass
+            else:
+                wasm_code += "(result {})\n".format(r_type[0].get_contents())
         else:
             raise BaseException("返り値が設定されていません")
         for i in self.get_all_local_value():
@@ -1775,6 +1775,33 @@ class State_parser(Parser): # 文について解決します
         for i in codelist:
             i.resolve_self()
         return codelist
+
+    def toplevel_resolve(self):
+        """
+        # toplevel_resolve 
+        入力されたコードに対して、本番環境でほしい成果物を出力する
+        ## 主な処理
+        - import したい関数の呼び出し
+        - exportしたい関数pub関数
+        """
+        wasm_code:str = ""
+        wasm_code += "(module\n"
+        codelist = self.resolve()
+        export_functions:list = []
+        for elem in codelist:
+            if type(elem) is DecFunc:
+                if elem.pub_flag:
+                    export_functions.append(elem.get_name())
+                wasm_code += elem.wat_format_gen()
+            else:
+                raise BaseException("Only functions can be placed at the top level")
+        # ここで、exportしたい関数をまとめて宣言する
+        # (export "gcd" (func $gcd))
+        for funcname in export_functions:
+            wasm_code += "(export \"{}\" (func ${}))\n".format(funcname,funcname)
+        wasm_code += ")"
+
+        return wasm_code
 
 
 # Type_Elem

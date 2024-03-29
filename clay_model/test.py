@@ -114,7 +114,7 @@ let a = if (expr){return 0;}else{return 1} + a;
 """,
 """
 pub fn gcd(a:i32,b:i32):i32{
-    if b == 0{
+    if (b == 0){
         return a;
     }else{
         return gcd(b,a%b);
