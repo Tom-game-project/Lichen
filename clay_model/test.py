@@ -181,7 +181,7 @@ fn aa():i32{
         codelist = a.resolve()
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample state: ",testcase)
-        # print("result: ",codelist)
+        print("result: ",codelist)
         for elem in codelist:
             # print(elem)
             if type(elem) is lichen.DecFunc:

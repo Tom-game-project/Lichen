@@ -905,10 +905,9 @@ class Syntax(Elem):
                 if self.expr:
                     wasm_code += self.expr[0].wat_format_gen()
                 else:
-                    # ifに条件式が与えられていない場合
-                    raise BaseException("Error!")
-                wasm_code += "else"
-                
+                    # ここには式は存在しない
+                    pass
+                wasm_code += "else\n"
             else:
                 raise BaseException("Error!")
         elif syntax_head == "loop":
@@ -992,7 +991,7 @@ class SyntaxBox(Elem):
             # if 返り値用変数
             wasm_code += "(local $#rif i32)\n" # TODO
             for i in self.contents:wasm_code+=i.wat_format_gen("if")# if elif else
-            for i in self.__count_name("elif"):wasm_code += "end\n" # elif end
+            wasm_code += "end\n"*self.__count_name("elif") # elif end
             wasm_code += "end\n"                                    # else end
         elif self.name == "loop":
             pass
@@ -1320,11 +1319,27 @@ class DecValue(Elem):
                 rlist += local_value
         rlist += [copy.copy(self)]
         return rlist
-    
-    # def wat_format_gen(self) -> str:
-    #     wasm_code = ""
-        
-    #     return ""
+
+    def wat_format_gen(self) -> str:
+        """
+        watに変換したら完全に変数宣言の部分と代入部分が分離するので
+        ここでは、代入の処理変換するだけでよい
+        TODO: いまはまだi32のみの対応で良い
+        ```wat
+        ;; 宣言済みの変数$aに10を代入する例
+        i32.const 10
+        local.set $a
+        ```
+        """
+        wasm_code = ""
+        if self.contents:
+            #
+            wasm_code += self.contents[0].wat_format_gen()
+            wasm_code += "local.set ${}\n".format(self.name)
+        else:
+            # 変数の宣言のみで、代入部分が存在しないばあいはpass
+            pass
+        return wasm_code
 
 class Expr(Elem): # Exprは一時的なものである
     """
