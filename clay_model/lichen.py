@@ -1072,9 +1072,6 @@ class Func(Elem):
             elif self.name.get_contents() in self.wasm_special_ope_correspondence_table:
                 # 
                 # 演算子は両脇に2つの引数を取る
-                wasm_code = ""
-                self.contents[0] # right:dist
-                self.contents[1] # left:expr
                 wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
                 # print("-"*50,self.contents[1][0])
                 wasm_code += self.contents[1][0].wat_format_gen()
@@ -1253,7 +1250,10 @@ class DecFunc(Elem):
         for i in args:
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
         if r_type: # TODO: 自作の型などについての設定
-            wasm_code += "(result {})\n".format(r_type[0].get_contents())
+            if r_type[0].get_contents() == "void":
+                pass
+            else:
+                wasm_code += "(result {})\n".format(r_type[0].get_contents())
         else:
             raise BaseException("返り値が設定されていません")
         for i in self.get_all_local_value():
