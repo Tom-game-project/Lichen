@@ -1,0 +1,48 @@
+
+fn return_00_err(a:i32):i32{
+    if (a > 10){
+        return 1;
+    };
+}
+
+fn return_01_ok(a:i32):i32{
+    if (a > 10){
+        return 1;
+    };
+    return 0;
+}
+
+fn return_02_ok(a:i32):i32{
+    if (a > 10){
+        return 1;
+    }else{
+        return 0;
+    };
+}
+
+fn return_03_err(a:i32):i32{
+    if (a>10){
+        return 2;
+    }elif(a>=10){
+        return 1;
+    };
+}
+
+fn return_04_ok(a:i32):i32{
+    if (a>10){
+        return 2;
+    }elif(a>=10 && a>0){
+        return 1;
+    };
+    return 0;
+}
+
+fn return_05_ok(a:i32):i32{
+    if (a>10){
+        return 2;
+    }elif(a>=10 && a > 0){
+        return 1;
+    }else{
+        return 0;
+    };
+}

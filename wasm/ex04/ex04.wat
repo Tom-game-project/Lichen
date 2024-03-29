@@ -1,40 +1,43 @@
 (module
     (import "console" "log" (func $log (param i32)))
 
-    (func $if_expr_test00
-    (param $arg0 i32)
-    (result i32)
-    (local $i i32)
-    ;; let i = if (arg0){10}else{0}
-    local.get $arg0
-    if
-    i32.const 10
-    local.set $i
-    else
-    i32.const 0
-    local.set $i
-    end
-    ;; return i; #スタックに返り値を積む
-    local.get $i
-    return
-    )
+    ;; - else が存在している
+    
+    ;;   - すべての処理の中身がreturnで終わる場合
+            ;; if (arg0){return 10;}else{return 0;}
+            (func $if_expr_test00
+            (param $arg0 i32)
+            (result i32)
+            local.get $arg0
+            if
+            i32.const 10
+            return
+            else
+            i32.const 0
+            return
+            end
+            ;; return i; #スタックに返り値を積む
+            unreachable
+            )
 
-    (func $if_expr_test01
-    ;; if文の中にreturn がある場合
-    (param $arg0 i32)
-    (result i32)
-    (local $i i32)
-    ;; if (arg0){return 10}else{0};
-    local.get $arg0
-    if
-    i32.const 10
-    return
-    else
-    i32.const 0
-    return
-    end
-    unreachable
-    )
+    ;;   - すべての処理の中身のすべてがexprである場合
+            ;; return (if (arg0){return 10}else{0});
+            (func $if_expr_test01
+            (param $arg0 i32)
+            (result i32)
+            (local $#r00 i32)
+            local.get $arg0
+            if
+            i32.const 10
+            local.set $#r00
+            else
+            i32.const 0
+            local.set $#r00
+            end
+
+            local.set $#r00
+            return
+            )
 
     ;; 
     (func $if_expr_test02
