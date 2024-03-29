@@ -1776,6 +1776,33 @@ class State_parser(Parser): # 文について解決します
             i.resolve_self()
         return codelist
 
+    def toplevel_resolve(self):
+        """
+        # toplevel_resolve 
+        入力されたコードに対して、本番環境でほしい成果物を出力する
+        ## 主な処理
+        - import したい関数の呼び出し
+        - exportしたい関数pub関数
+        """
+        wasm_code:str = ""
+        wasm_code += "(module\n"
+        codelist = self.resolve()
+        export_functions:list = []
+        for elem in codelist:
+            if type(elem) is DecFunc:
+                if elem.pub_flag:
+                    export_functions.append(elem.get_name())
+                wasm_code += elem.wat_format_gen()
+            else:
+                raise BaseException("Only functions can be placed at the top level")
+        # ここで、exportしたい関数をまとめて宣言する
+        # (export "gcd" (func $gcd))
+        for funcname in export_functions:
+            wasm_code += "(export \"{}\" (func ${}))\n".format(funcname,funcname)
+        wasm_code += ")"
+
+        return wasm_code
+
 
 # Type_Elem
 class Type_Elem(Elem):
