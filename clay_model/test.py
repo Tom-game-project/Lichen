@@ -101,7 +101,7 @@ pub fn sub(a:i32,b:i32):i32{
     let c = a - b;
     return c;
 }
-fn main (){
+fn main (a:i32,b:i32):void{
     let c = add(1,2);
     let d:i32 = a / (b*(c+d));
     c += 1;
@@ -181,14 +181,15 @@ fn aa():i32{
         codelist = a.resolve()
         print(f"test{str(i).rjust(2,'0')}".center(40,'='))
         print("sample state: ",testcase)
-        # print("result: ",codelist)
+        print("result: ",codelist)
         for elem in codelist:
             # print(elem)
-            if elem is lichen.DecFunc:
-                print(elem)
+            if type(elem) is lichen.DecFunc:
+                # print(elem)
                 print(elem.wat_format_gen())
             else:
-                print (elem + "is not dec")
+                #print(repr(elem) + "is not dec")
+                pass
         print()
 
 def __test_04():

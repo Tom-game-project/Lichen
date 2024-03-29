@@ -43,6 +43,7 @@ class Parser:
             "-=":-4,
             "*=":-4,
             "/=":-4,
+            "%=":-4,
             # 二乗
             "**":3,
         }
@@ -905,10 +906,9 @@ class Syntax(Elem):
                 if self.expr:
                     wasm_code += self.expr[0].wat_format_gen()
                 else:
-                    # ifに条件式が与えられていない場合
-                    raise BaseException("Error!")
-                wasm_code += "else"
-                
+                    # ここには式は存在しない
+                    pass
+                wasm_code += "else\n"
             else:
                 raise BaseException("Error!")
         elif syntax_head == "loop":
@@ -992,7 +992,7 @@ class SyntaxBox(Elem):
             # if 返り値用変数
             wasm_code += "(local $#rif i32)\n" # TODO
             for i in self.contents:wasm_code+=i.wat_format_gen("if")# if elif else
-            for i in self.__count_name("elif"):wasm_code += "end\n" # elif end
+            wasm_code += "end\n"*self.__count_name("elif") # elif end
             wasm_code += "end\n"                                    # else end
         elif self.name == "loop":
             pass
@@ -1015,7 +1015,7 @@ class Func(Elem):
     """
     def __init__(self, name: str, contents: list, depth:int) -> None:
         super().__init__(name, contents, depth)
-        self.ope_correspondence_table = {
+        self.wasm_ope_correspondence_table = {
             # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
             "+":"i32.add", # add
             "-":"i32.sub", # sub 
@@ -1036,10 +1036,20 @@ class Func(Elem):
             # TODO
             "=":"local.set"
         }
+        self.wasm_special_ope_correspondence_table:list = {
+            "+=":"i32.add",
+            "-=":"i32.sub",
+            "*=":"i32.mul",
+            "/=":"i32.div_u",
+            "%=":"i32.rem_u",
+        }
     
     def wat_format_gen(self) -> str:
         """
-        # wat_format_gen
+        # Func.wat_format_gen
+        
+        ## TODO:否定!などのprefixについての処理
+
         """
         wasm_code = ""
         call_name:str = None
@@ -1059,9 +1069,21 @@ class Func(Elem):
                     # a = b
                     # かならず引数は2つになるはずなのでそれ以外の場合はError!
                     raise BaseException("Error!")
+            elif self.name.get_contents() in self.wasm_special_ope_correspondence_table:
+                # 
+                # 演算子は両脇に2つの引数を取る
+                wasm_code = ""
+                self.contents[0] # right:dist
+                self.contents[1] # left:expr
+                wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
+                # print("-"*50,self.contents[1][0])
+                wasm_code += self.contents[1][0].wat_format_gen()
+                wasm_code += "local.set ${}\n".format(self.contents[0][0].contents)
             else:
                 # 普通の演算子(代入やincrではない)場合
-                call_name = self.ope_correspondence_table[self.name.get_contents()]
+                #
+                # 特別な演算子、incr decrの場合は別の処理をする
+                call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
                 for i in self.contents: # per arg
                     if len(i) == 0:        # TODO
                         pass
@@ -1230,7 +1252,10 @@ class DecFunc(Elem):
         wasm_code += "(func ${}\n".format(funcname) # open func    
         for i in args:
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
-        wasm_code += "(resulut {})\n".format(r_type[0].get_contents())
+        if r_type: # TODO: 自作の型などについての設定
+            wasm_code += "(result {})\n".format(r_type[0].get_contents())
+        else:
+            raise BaseException("返り値が設定されていません")
         for i in self.get_all_local_value():
             type_ = i.get_type()
             # TODO: default is i32 あとで型の推論をできるように実装
@@ -1317,11 +1342,27 @@ class DecValue(Elem):
                 rlist += local_value
         rlist += [copy.copy(self)]
         return rlist
-    
-    # def wat_format_gen(self) -> str:
-    #     wasm_code = ""
-        
-    #     return ""
+
+    def wat_format_gen(self) -> str:
+        """
+        watに変換したら完全に変数宣言の部分と代入部分が分離するので
+        ここでは、代入の処理変換するだけでよい
+        TODO: いまはまだi32のみの対応で良い
+        ```wat
+        ;; 宣言済みの変数$aに10を代入する例
+        i32.const 10
+        local.set $a
+        ```
+        """
+        wasm_code = ""
+        if self.contents:
+            #
+            wasm_code += self.contents[0].wat_format_gen()
+            wasm_code += "local.set ${}\n".format(self.name)
+        else:
+            # 変数の宣言のみで、代入部分が存在しないばあいはpass
+            pass
+        return wasm_code
 
 class Expr(Elem): # Exprは一時的なものである
     """
@@ -1349,6 +1390,15 @@ class Expr(Elem): # Exprは一時的なものである
             local_value = i.get_all_local_value()
             rlist += local_value
         return rlist
+
+    def wat_format_gen(self) -> str:
+        wasm_code = ""
+        if self.contents:
+            wasm_code += self.contents[0].wat_format_gen()
+        else:
+            # self.contentsがからである場合
+            pass
+        return wasm_code
 
 class ControlStatement(Elem):
     """
