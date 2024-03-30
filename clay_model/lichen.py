@@ -893,12 +893,12 @@ class Syntax(Elem):
                 ;; <処理>
                 ```
                 """
-                wasm_code += "else"
+                wasm_code += "else\n"
                 if self.expr:# <式>
                     wasm_code += self.expr[0].wat_format_gen()
                 else: # ifに条件式が与えられていない場合
                     raise BaseException("Error!")
-                wasm_code += "if"
+                wasm_code += "if\n"
                 if self.contents: # ブロック内の処理
                     wasm_code += self.contents[0].wat_format_gen()
                 else:
