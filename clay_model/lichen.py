@@ -296,6 +296,7 @@ class Parser:
         ```python
         grouping_call(vec,[Word],Parenblock,Func) -> list:
         ```
+        TODO:ここでは、returnやbreak,continueが関数として認識されないようにする
         """
         flag:bool = False
         name_tmp:Word = None
@@ -307,7 +308,8 @@ class Parser:
                 name_tmp  = i
                 flag = True
             elif type(i) is block:
-                if flag:
+                if flag and name_tmp.contents not in self.control_statement:
+                    # return ();みたいなかっこ悪い書き方もできる！
                     rlist.append(
                         ObjectInstance(
                             name_tmp.get_contents(),# func name
@@ -891,12 +893,12 @@ class Syntax(Elem):
                 ;; <処理>
                 ```
                 """
-                wasm_code += "else"
+                wasm_code += "else\n"
                 if self.expr:# <式>
                     wasm_code += self.expr[0].wat_format_gen()
                 else: # ifに条件式が与えられていない場合
                     raise BaseException("Error!")
-                wasm_code += "if"
+                wasm_code += "if\n"
                 if self.contents: # ブロック内の処理
                     wasm_code += self.contents[0].wat_format_gen()
                 else:
