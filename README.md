@@ -6,7 +6,7 @@ Check [Lichen Pages](https://tom-game-project.github.io/Lichen/) !
 
 ## test version
 
-following directory is test vesion.
+following directory is test version.
 
 [cray_model](/clay_model/)
 
