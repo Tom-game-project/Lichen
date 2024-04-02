@@ -803,8 +803,10 @@ class Word(Elem):# Word Elemは仮どめ
     
     def wat_format_gen(self,minus=False):
         """
-# wat_format_gen
-## TODO:数字ではない場合
+        # wat_format_gen
+        ## param
+        # ある数字が負の値であるとき、 
+        ## TODO:数字ではない場合
         """
         if self.__self_is_i32():
             return "i32.const {}{}\n".format(
@@ -813,7 +815,6 @@ class Word(Elem):# Word Elemは仮どめ
             )
         else:
             return "local.get ${}\n".format(self.contents)
-                
 
 class Syntax(Elem):
     """
@@ -960,9 +961,6 @@ class SyntaxBox(Elem):
         """
         for i in self.contents:
             i.resolve_self()
-
-    # def __repr__(self):
-    #     return f"<{type(self).__name__} name:({self.name}) args:({self.contents})>"
 
     def get_all_local_value(self):
         rlist:list = list()
