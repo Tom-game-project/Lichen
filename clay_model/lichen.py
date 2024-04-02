@@ -801,15 +801,19 @@ class Word(Elem):# Word Elemは仮どめ
                 return False
         return True
     
-    def wat_format_gen(self):
+    def wat_format_gen(self,minus=False):
         """
 # wat_format_gen
 ## TODO:数字ではない場合
         """
         if self.__self_is_i32():
-            return "i32.const {}\n".format(self.contents)
+            return "i32.const {}{}\n".format(
+                '-' if minus else '',
+                self.contents
+            )
         else:
             return "local.get ${}\n".format(self.contents)
+                
 
 class Syntax(Elem):
     """
@@ -997,11 +1001,11 @@ class SyntaxBox(Elem):
             wasm_code += "end\n"*self.__count_name("elif") # elif end
             wasm_code += "end\n"                                    # else end
         elif self.name == "loop":
-            pass
+            pass # TODO
         elif self.name == "while":
-            pass
+            pass # TODO
         elif self.name == "for":
-            pass
+            pass # TODO
         else:
             raise BaseException("Error!")
         return wasm_code
@@ -1072,17 +1076,50 @@ class Func(Elem):
                     # かならず引数は2つになるはずなのでそれ以外の場合はError!
                     raise BaseException("Error!")
             elif self.name.get_contents() in self.wasm_special_ope_correspondence_table:
-                # 
+                # `+=`や`-=`のとき
                 # 演算子は両脇に2つの引数を取る
                 wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
                 # print("-"*50,self.contents[1][0])
                 wasm_code += self.contents[1][0].wat_format_gen()
                 wasm_code += "local.set ${}\n".format(self.contents[0][0].contents)
-            else:
+            elif self.name.get_contents() in self.wasm_ope_correspondence_table:
                 # 普通の演算子(代入やincrではない)場合
                 #
                 # 特別な演算子、incr decrの場合は別の処理をする
+                if len(self.contents) == 2:
+                    call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
+                    if self.contents[0]:
+                        # 通常と同じ
+                        wasm_code += self.contents[0][0].wat_format_gen() # 左側
+                        wasm_code += self.contents[1][0].wat_format_gen() # 右側
+                        wasm_code += call_name + '\n'
+                    else: # self.contents[0]が空の配列だった場合
+                        # -10のような書き方をしている場合
+                        # 以下のように変換したい
+                        # const.i32 -10
+                        if self.name.get_contents() == "+":
+                            wasm_code += self.contents[1][0].wat_format_gen(minus = False)
+                        elif self.name.get_contents() == "-":
+                            # 例.
+                            # const.i32 -10
+                            # self.contents[1][0] # これは絶対にWordオブジェクトになる
+                            wasm_code += self.contents[1][0].wat_format_gen(minus = True)
+                        else: # 例えば"/10"みたいな書き方がエラー
+                            raise BaseException("Error!:invalid syntax")
+                else:
+                    # 二項演算の引数が2つ以上またはそれ以下
+                    raise BaseException("Error!")
+                # call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
+                # print(self.contents)
+                # for i in self.contents: # per arg
+                #     if len(i) == 0:        # TODO
+                #         pass
+                #     else:
+                #         wasm_code += i[0].wat_format_gen()
+                # wasm_code += call_name + '\n'
+            else:
                 call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
+                print(self.contents)
                 for i in self.contents: # per arg
                     if len(i) == 0:        # TODO
                         pass
