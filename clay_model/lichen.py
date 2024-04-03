@@ -13,7 +13,7 @@ class Parser:
     # 式を解決します
     def __init__(self, code:str,depth = 0) -> None:
         self.code:str = code
-        self.depth = depth
+        self.depth:int = depth
 
         # setting
         ## <, <=, >, >=, !=, <- (python で言うfor i in ...のin)
@@ -876,6 +876,7 @@ class Syntax(Elem):
         """
         wasm_code = ""
         if syntax_head == "if":
+            # 
             if self.name == "if":
                 if self.expr: # <式>
                     wasm_code += self.expr[0].wat_format_gen()
@@ -993,9 +994,15 @@ class SyntaxBox(Elem):
         """
         wasm_code = ""
         if self.name == "if":
+            # ifが続く場合
             # if 返り値用変数
+            else_flag:bool
+            if any(lambda a:a.name == "elif",self.contents): # "elif" in self.contents
+                else_flag = True
+            else:
+                else_flag = False
             wasm_code += "(local $#rif i32)\n" # TODO
-            for i in self.contents:wasm_code+=i.wat_format_gen("if")# if elif else
+            for i in self.contents:wasm_code += i.wat_format_gen("if")# if elif else
             wasm_code += "end\n"*self.__count_name("elif") # elif end
             wasm_code += "end\n"                                    # else end
         elif self.name == "loop":
