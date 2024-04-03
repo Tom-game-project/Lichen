@@ -970,7 +970,6 @@ class SyntaxBox(Elem):
             rlist += local_value
         return rlist
 
-
     def __count_name(self,name:str) -> int:
         """
         # __count 
@@ -1034,7 +1033,7 @@ class Func(Elem):
             "/":"i32.div_u",# div
             "%":"i32.rem_u", # mod 
 
-            "==":"i32.eq",# Equal
+            "==":"i32.eq",# Equal => TODO : i32.eqz
             "!=":"i32.ne",# Not equal 
             "<":"i32.lt_u",# Less than
             ">":"i32.gt_u", # greater than
@@ -1044,7 +1043,6 @@ class Func(Elem):
             "&&":"i32.and", # and
             "||":"i32.or", # or
 
-            # TODO
             "=":"local.set"
         }
         self.wasm_special_ope_correspondence_table:list = {

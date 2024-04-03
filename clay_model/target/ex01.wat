@@ -33,7 +33,7 @@ local.get $b
 local.get $a
 local.get $b
 i32.rem_u
-call $gcd
+call $gcd2
 local.set $#rif
 end
 local.get $#rif
