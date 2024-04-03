@@ -112,16 +112,16 @@
             if
                 i32.const 10
                 local.set $#if00
-            else
-            local.get $arg1
-            if
+            else              ;; else if 
+            local.get $arg1   ;; <- expr
+            if                ;;
                 i32.const 5
                 local.set $#if00
-            else
+            else              ;; else
                 i32.const 0
                 local.set $#if00
-            end
-            end
+            end               ;; fi
+            end               ;; fi
             local.get $#if00
             i32.const 1
             return

@@ -1003,7 +1003,7 @@ class SyntaxBox(Elem):
                 else_flag = False
             wasm_code += "(local $#rif i32)\n" # TODO:ifに返り値を期待する場合、それを格納するための変数
             for i in self.contents:wasm_code += i.wat_format_gen("if")# if elif else
-            wasm_code += "end\n"*self.__count_name("elif")            # elif end
+            wasm_code += "end\n"*self.__count_name("elif")            # elif end 開いたelif分だけendで閉じる必要がある
             wasm_code += "end\n"                                      # if ... end このendはifをセットである
         elif self.name == "loop":
             pass # TODO
