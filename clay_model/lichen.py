@@ -894,8 +894,6 @@ class Syntax(Elem):
                 raise BaseException("Error!")
         elif self.name == "else":
             if self.expr:
-                wasm_code += self.expr[0].wat_format_gen()
-            else:
                 # ここには式は存在しないはず
                 raise BaseException("Error!")
             wasm_code += "else\n"
