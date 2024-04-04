@@ -896,9 +896,11 @@ class Syntax(Elem):
             if self.expr:
                 wasm_code += self.expr[0].wat_format_gen()
             else:
-                # ここには式は存在しない
-                pass
+                # ここには式は存在しないはず
+                raise BaseException("Error!")
             wasm_code += "else\n"
+            if self.contents: # ブロック内の処理
+                wasm_code += self.contents[0].wat_format_gen()
         else:
             raise BaseException("Error!")
         return wasm_code
@@ -953,15 +955,16 @@ class Syntax(Elem):
           - for
           - else
         """
-        wasm_code = ""
+        wasm_code:str = ""
         if syntax_head == "if":
+            # wasmとlichenのロジックに従って適切な変換を行う
             wasm_code += self.__proc_if()
         elif syntax_head == "loop":
-            self.__proc_loop()
+            wasm_code += self.__proc_loop()
         elif syntax_head == "while":
-            self.__proc_while()
+            wasm_code += self.__proc_while()
         elif syntax_head == "for":
-            self.__proc_for()
+            wasm_code += self.__proc_for()
         else:
             raise BaseException("Error!")
         return wasm_code
@@ -1002,6 +1005,40 @@ class SyntaxBox(Elem):
                 counter += 1
         return counter
 
+    def __include_return_in_contents(self, elements:list) -> bool:
+        """
+        # __include_return
+        """
+        for i in elements:
+            if type(i) is ControlStatement and i.get_name() == "return":
+                return True
+        return False
+
+    def __if_has_else(self, elements:list) -> bool:
+        return any(
+            map(
+                lambda a:a.name == "else",
+                elements
+                )
+            )
+
+    def __if_unreachable_checker(self) -> bool:
+        """
+        # __if_unreachable_checker
+        ifに到達する可能性があるのかないのかをcheckするメソッド
+        """
+        # for i in self.contents:
+        #     print(":::",i.contents)
+        #     print(self.__include_return_in_contents(i.contents))
+        return all(
+            map(
+                lambda i:
+                    self.__include_return_in_contents(i.contents),
+                self.contents
+                )
+            )
+
+
     def wat_format_gen(self) -> str:
         """
         # wat_format_gen 
@@ -1017,14 +1054,18 @@ class SyntaxBox(Elem):
             # ifが続く場合
             # if 返り値用変数
             else_flag:bool
-            if any(map(lambda a:a.name == "else",self.contents)): # "elif" in self.contents
+            if self.__if_has_else(self.contents): # "else" in self.contents
                 else_flag = True
             else:
                 else_flag = False
-            wasm_code += "(local $#rif i32)\n" # TODO:ifに返り値を期待する場合、それを格納するための変数
-            for i in self.contents:wasm_code += i.wat_format_gen("if")# if elif else
+            wasm_code += "(local $#rif i32)\n"      # TODO:ifに返り値を期待する場合、それを格納するための変数
+            for i in self.contents:                 # contents内の要素はすべて、syntax
+                wasm_code += i.wat_format_gen("if") # if elif else
             wasm_code += "end\n"*self.__count_name("elif")            # elif end 開いたelif分だけendで閉じる必要がある
             wasm_code += "end\n"                                      # if ... end このendはifをセットである
+            if self.__if_unreachable_checker():
+                # すべてのブロックがreturnをした場合end後には到達市内ため
+                wasm_code += "unreachable\n"
         elif self.name == "loop":
             pass # TODO
         elif self.name == "while":

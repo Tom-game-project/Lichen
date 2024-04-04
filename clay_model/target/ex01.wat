@@ -39,4 +39,6 @@ end
 local.get $#rif
 return 
 )
+(export "gcd" (func $gcd))
+(export "gcd2" (func $gcd2))
 )
