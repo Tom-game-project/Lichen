@@ -830,7 +830,7 @@ class Syntax(Elem):
 
     def get_expr(self):
         return self.expr
-    
+
     def resolve_self(self):
         """
         # resolve_self
@@ -854,7 +854,86 @@ class Syntax(Elem):
             local_value = i.get_all_local_value()
             rlist += local_value
         return rlist
-    
+
+    def __proc_if(self) -> str: # 工事中:TODO
+        """
+        # __proc_if 
+        headがifだった時の処理
+        """
+        wasm_code:str = ""
+        if self.name == "if":
+            if self.expr: # <式>
+                wasm_code += self.expr[0].wat_format_gen()
+            else:
+                # ifに条件式が与えられていない場合
+                raise BaseException("Error!")
+            wasm_code += "if\n"
+            if self.contents: # ブロック内の処理
+                wasm_code += self.contents[0].wat_format_gen()
+            else:
+                raise BaseException("Error!")
+        elif self.name == "elif":
+            """
+            # elif
+            ```wat
+            else
+            ;; <式>
+            if
+            ;; <処理>
+            ```
+            """
+            wasm_code += "else\n"
+            if self.expr:# <式>
+                wasm_code += self.expr[0].wat_format_gen()
+            else: # ifに条件式が与えられていない場合
+                raise BaseException("Error!")
+            wasm_code += "if\n"
+            if self.contents: # ブロック内の処理
+                wasm_code += self.contents[0].wat_format_gen()
+            else:
+                raise BaseException("Error!")
+        elif self.name == "else":
+            if self.expr:
+                wasm_code += self.expr[0].wat_format_gen()
+            else:
+                # ここには式は存在しない
+                pass
+            wasm_code += "else\n"
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
+    def __proc_loop(self) -> str: # 工事中:TODO
+        wasm_code = ""
+        if self.name == "loop":
+            pass#TODO
+        elif self.name == "else":
+            pass#TODO
+        else:
+            raise BaseException("Error!")
+        wasm_code += "未実装\n"
+        return wasm_code
+
+    def __proc_while(self) -> str: # 工事中:TODO
+        wasm_code = ""
+        if self.name == "while":
+            pass#TODO
+        elif self.name == "else":
+            pass#TODO
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
+    def __proc_for(self) -> str: # 工事中:TODO
+        wasm_code = ""
+        if self.name == "for":
+            pass#TODO
+        elif self.name == "else":
+            pass#TODO
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
     def wat_format_gen(self,syntax_head:str) -> str:
         """
         # wat_format_gen 
@@ -876,73 +955,15 @@ class Syntax(Elem):
         """
         wasm_code = ""
         if syntax_head == "if":
-            # 
-            if self.name == "if":
-                if self.expr: # <式>
-                    wasm_code += self.expr[0].wat_format_gen()
-                else:
-                    # ifに条件式が与えられていない場合
-                    raise BaseException("Error!")
-                wasm_code += "if\n"
-                if self.contents: # ブロック内の処理
-                    wasm_code += self.contents[0].wat_format_gen()
-                else:
-                    raise BaseException("Error!")
-
-            elif self.name == "elif":
-                """
-                # elif
-                ```wat
-                else
-                ;; <式>
-                if
-                ;; <処理>
-                ```
-                """
-                wasm_code += "else\n"
-                if self.expr:# <式>
-                    wasm_code += self.expr[0].wat_format_gen()
-                else: # ifに条件式が与えられていない場合
-                    raise BaseException("Error!")
-                wasm_code += "if\n"
-                if self.contents: # ブロック内の処理
-                    wasm_code += self.contents[0].wat_format_gen()
-                else:
-                    raise BaseException("Error!")
-
-            elif self.name == "else":
-                if self.expr:
-                    wasm_code += self.expr[0].wat_format_gen()
-                else:
-                    # ここには式は存在しない
-                    pass
-                wasm_code += "else\n"
-            else:
-                raise BaseException("Error!")
+            wasm_code += self.__proc_if()
         elif syntax_head == "loop":
-            if self.name == "loop":
-                pass#TODO
-            elif self.name == "else":
-                pass#TODO
-            else:
-                raise BaseException("Error!")
+            self.__proc_loop()
         elif syntax_head == "while":
-            if self.name == "while":
-                pass#TODO
-            elif self.name == "else":
-                pass#TODO
-            else:
-                raise BaseException("Error!")
+            self.__proc_while()
         elif syntax_head == "for":
-            if self.name == "for":
-                pass#TODO
-            elif self.name == "else":
-                pass#TODO
-            else:
-                raise BaseException("Error!")
+            self.__proc_for()
         else:
             raise BaseException("Error!")
-
         return wasm_code
 
 class SyntaxBox(Elem):
@@ -996,7 +1017,7 @@ class SyntaxBox(Elem):
             # ifが続く場合
             # if 返り値用変数
             else_flag:bool
-            if any(lambda a:a.name == "else",self.contents): # "elif" in self.contents
+            if any(map(lambda a:a.name == "else",self.contents)): # "elif" in self.contents
                 else_flag = True
             else:
                 else_flag = False
@@ -1025,6 +1046,7 @@ class Func(Elem):
     """
     def __init__(self, name: str, contents: list, depth:int) -> None:
         super().__init__(name, contents, depth)
+        # TODO : 引数の型チェックを入れる
         self.wasm_ope_correspondence_table = {
             # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
             "+":"i32.add", # add
