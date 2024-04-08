@@ -33,10 +33,12 @@ local.get $b
 local.get $a
 local.get $b
 i32.rem_u
-call $gcd
+call $gcd2
 local.set $#rif
 end
 local.get $#rif
 return 
 )
+(export "gcd" (func $gcd))
+(export "gcd2" (func $gcd2))
 )

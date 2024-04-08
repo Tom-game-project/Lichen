@@ -34,7 +34,7 @@ class LichenTester:
                 print(test_case)
                 sparser = lichen.State_parser(test_case)
                 print(" output ".center(100,'-'))
-                
+                print(sparser.resolve())
                 print(sparser.toplevel_resolve())
                 out_wat_text = sparser.toplevel_resolve()
             regex = re.compile(r"(ex\d\d)\.test\.lc")
@@ -44,7 +44,12 @@ class LichenTester:
                 f.write(out_wat_text)
 
 def test00():
-    paths = glob.glob("./test_set/*test.lc")
+    # paths = glob.glob("./test_set/*test.lc")
+    paths = [
+        "test_set/ex00.test.lc",
+        "test_set/ex01.test.lc",
+        "test_set/ex02.test.lc",
+    ]
     tester = LichenTester(paths)
     print("test start".center(100,"="))
     tester.test_all()
