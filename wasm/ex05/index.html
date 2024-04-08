@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script type="text/javascript">
+        //const url = 'ex05.wasm';
+        //WebAssembly.instantiateStreaming(fetch(url), { console });
+        function consoleLogString(offset, length) {
+            const bytes = new Uint8Array(memory.buffer, offset, length);
+            const string = new TextDecoder("utf8").decode(bytes);
+            console.log(string);
+        }
+        const memory = new WebAssembly.Memory({ initial: 1 });
+        const importObject = {
+            console: { print: consoleLogString },
+            js: {
+                mem: memory,
+            },
+        };
+        fetch("ex05.wasm")
+        .then(res => res.arrayBuffer())
+        .then(buffer => WebAssembly.instantiate(buffer,importObject))
+        .then(({module, instance}) => {
+          //const mem = instance.exports.mem;
+          console.log(memory.buffer.byteLength);                    // 65536
+          const array = new Uint32Array(memory.buffer);
+          console.log(instance.exports.sum(3));                  // 6
+          //array.subarray(0, 10).forEach((x, i) => array[i] = i);
+          instance.exports.sayHello();
+          console.log(array);
+        });
+    </script>
+</body>
+</html>
