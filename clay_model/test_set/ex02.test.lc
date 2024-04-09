@@ -7,3 +7,13 @@ fn stairs(a:i32):i32{
         return 0;
     };
 }
+
+fn stairs2(a:i32):i32{
+    return if (10 < a){
+        2;
+    }elif (0 < a && a<=10){
+        1;
+    }else{
+        0;
+    };
+}

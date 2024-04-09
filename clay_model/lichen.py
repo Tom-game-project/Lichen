@@ -855,10 +855,11 @@ class Syntax(Elem):
             rlist += local_value
         return rlist
 
-    def __proc_if(self) -> str: # 工事中:TODO
+    def __proc_if(self,return_type = "None") -> str: # 工事中:TODO
         """
         # __proc_if 
         headがifだった時の処理
+        return_type "None"|"return"|""|
         """
         wasm_code:str = ""
         if self.name == "if":
@@ -867,7 +868,10 @@ class Syntax(Elem):
             else:
                 # ifに条件式が与えられていない場合
                 raise BaseException("Error!")
-            wasm_code += "if\n"
+            if return_type == "None": #                         TODO : 型推論の実装をしたときに変更する
+                wasm_code += "if\n"
+            else:
+                wasm_code += "if (result i32)\n"
             if self.contents: # ブロック内の処理
                 wasm_code += self.contents[0].wat_format_gen()
             else:
@@ -887,7 +891,10 @@ class Syntax(Elem):
                 wasm_code += self.expr[0].wat_format_gen()
             else: # ifに条件式が与えられていない場合
                 raise BaseException("Error!")
-            wasm_code += "if\n"
+            if return_type == "None": #                         TODO : 型推論の実装をしたときに変更する
+                wasm_code += "if\n"
+            else:
+                wasm_code += "if (result i32)\n"
             if self.contents: # ブロック内の処理
                 wasm_code += self.contents[0].wat_format_gen()
             else:
@@ -934,7 +941,7 @@ class Syntax(Elem):
             raise BaseException("Error!")
         return wasm_code
 
-    def wat_format_gen(self,syntax_head:str) -> str:
+    def wat_format_gen(self,syntax_head:str,return_type = "None") -> str:
         """
         # wat_format_gen 
         TODO:これは、非効率的な実装、あとで書き直す
@@ -956,7 +963,7 @@ class Syntax(Elem):
         wasm_code:str = ""
         if syntax_head == "if":
             # wasmとlichenのロジックに従って適切な変換を行う
-            wasm_code += self.__proc_if()
+            wasm_code += self.__proc_if(return_type=return_type)
         elif syntax_head == "loop":
             wasm_code += self.__proc_loop()
         elif syntax_head == "while":
@@ -1037,7 +1044,6 @@ class SyntaxBox(Elem):
                 )
             )
 
-
     def wat_format_gen(self) -> str:
         """
         # wat_format_gen 
@@ -1052,11 +1058,17 @@ class SyntaxBox(Elem):
         if self.name == "if":
             # ifが続く場合
             # if 返り値用変数
+            # 
+            all_if_block_has_return = self.__if_unreachable_checker() and self.__if_has_else(self.contents)
             for i in self.contents:                 # contents内の要素はすべて、syntax
-                wasm_code += i.wat_format_gen("if") # if elif else
+                if all_if_block_has_return:
+                    print(i)
+                    wasm_code += i.wat_format_gen("if",return_type = "None") # if elif else
+                else:
+                    wasm_code += i.wat_format_gen("if",return_type = "i32")
             wasm_code += "end\n"*self.__count_name("elif")            # elif end 開いたelif分だけendで閉じる必要がある
             wasm_code += "end\n"                                      # if ... end このendはifをセットである
-            if self.__if_unreachable_checker() and self.__if_has_else(self.contents):
+            if all_if_block_has_return:
                 # すべてのブロックがreturnをした場合end後には到達不可能ため
                 wasm_code += "unreachable\n"
         elif self.name == "loop":
