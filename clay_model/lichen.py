@@ -468,7 +468,7 @@ class Parser:
         return rlist
 
     # comma_spliter
-    def comma_spliter(self,vec:list) -> "Data":
+    def comma_spliter(self,vec:list) -> list:
         """
         # comma_spliter 
         (a,b,c,) == (a,b,c)
@@ -1561,8 +1561,9 @@ class ControlStatement(Elem):
         return wasm_code
 
     def resolve_self(self):
-        expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
+        expr_parser = Parser(self.contents, depth = self.depth + 1)
         self.contents = expr_parser.resolve()
+        self.contents = [Expr_parser(i,depth=self.depth+1).resolve() for i in self.contents]
     
     def get_all_local_value(self):
         rlist:list = list()

@@ -54,11 +54,30 @@ def test00():
     print("test start".center(100,"="))
     tester.test_all()
 
+def test01():
+    # paths = glob.glob("./test_set/*test.lc")
+    paths = [
+        "test_set/ex05.test.lc",
+    ]
+    # tester = LichenTester(paths)
+    # print("test start".center(100,"="))
+    # tester.test_all()
+    with open("test_set/ex05.test.lc",mode="r",encoding="utf-8") as f:
+        p = lichen.State_parser(f.read())
+        codelist = p.resolve()
+        for i in codelist:
+            print()
+            print(i)
+
+
+
 
 if __name__=="__main__":
     args = sys.argv
     if args[1] == "0":
         test00()
+    elif args[1] == "1":
+        test01()
     else:
         print("else")
 

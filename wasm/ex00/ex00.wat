@@ -35,5 +35,12 @@
     local.get $a
     return ;; スタックに積んだ変数を返却
     )
+
+    (func $test01
+    (result i32 i32)
+    i32.const 10
+    i32.const 10
+    return
+    )
     (export "gcd" (func $gcd))
 )
