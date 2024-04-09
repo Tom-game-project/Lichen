@@ -131,17 +131,13 @@
             (func $if_expr_test06
             (param $expr i32)
             (result i32)
-            (local $#if i32)
             i32.const 1
             local.get $expr
-            if
+            if (result i32)
                 i32.const 10
-                local.set $#if
             else
                 i32.const 0
-                local.set $#if
             end
-            local.get $#if
             i32.add
             return
             )

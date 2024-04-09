@@ -1024,6 +1024,7 @@ class SyntaxBox(Elem):
         """
         # __if_unreachable_checker
         ifに到達する可能性があるのかないのかをcheckするメソッド
+        if ステートメントないのすべてのブロックがreturn を含んでいるかどうかをcheckする
         """
         # for i in self.contents:
         #     print(":::",i.contents)
@@ -1051,18 +1052,12 @@ class SyntaxBox(Elem):
         if self.name == "if":
             # ifが続く場合
             # if 返り値用変数
-            else_flag:bool
-            if self.__if_has_else(self.contents): # "else" in self.contents
-                else_flag = True
-            else:
-                else_flag = False
-            wasm_code += "(local $#rif i32)\n"      # TODO:ifに返り値を期待する場合、それを格納するための変数
             for i in self.contents:                 # contents内の要素はすべて、syntax
                 wasm_code += i.wat_format_gen("if") # if elif else
             wasm_code += "end\n"*self.__count_name("elif")            # elif end 開いたelif分だけendで閉じる必要がある
             wasm_code += "end\n"                                      # if ... end このendはifをセットである
-            if self.__if_unreachable_checker():
-                # すべてのブロックがreturnをした場合end後には到達市内ため
+            if self.__if_unreachable_checker() and self.__if_has_else(self.contents):
+                # すべてのブロックがreturnをした場合end後には到達不可能ため
                 wasm_code += "unreachable\n"
         elif self.name == "loop":
             pass # TODO
