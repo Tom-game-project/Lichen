@@ -1545,7 +1545,7 @@ class ControlStatement(Elem):
         """
         wasm_code = ""
         for i in self.contents:
-            wasm_code += i.wat_format_gen()
+            wasm_code += i[0].wat_format_gen()
         
         #
         if self.name == "return":
@@ -1568,7 +1568,7 @@ class ControlStatement(Elem):
     def get_all_local_value(self):
         rlist:list = list()
         for i in self.contents:
-            local_value = i.get_all_local_value()
+            local_value = i[0].get_all_local_value()
             rlist += local_value
         return rlist
 

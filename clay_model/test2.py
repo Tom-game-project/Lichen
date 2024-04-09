@@ -68,6 +68,9 @@ def test01():
         for i in codelist:
             print()
             print(i)
+        print(
+            p.toplevel_resolve()
+        )
 
 
 
