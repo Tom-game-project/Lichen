@@ -313,7 +313,7 @@ class Parser:
                     rlist.append(
                         ObjectInstance(
                             name_tmp.get_contents(),# func name
-                            self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
+                            i.get_contents(),#self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
                             self.depth
                     ))
                     name_tmp = None
@@ -616,8 +616,8 @@ class Parser:
         関数の引数の解決
         """
         rlist:list = list()
-        for i in self.code:
-            rlist.append(self.__resolve_func_arg_unit(i))
+        rlist = self.__resolve_func_arg_unit(self.code)
+        rlist = self.comma_spliter(rlist)
         return rlist
 
 
@@ -1213,8 +1213,15 @@ class Func(Elem):
         return parser.resolve()
 
     def resolve_self(self):
-        args = self.get_contents()
-        self.contents = [self.resolve_self_unit(i) for i in args]
+        # args = self.get_contents()
+        # self.contents = [self.resolve_self_unit(i) for i in args]
+        if type(self.get_name()) is Operator:
+            args = self.get_contents()
+            self.contents = [self.resolve_self_unit(i) for i in args]
+        else:
+            expr_parser = Parser(self.contents, depth = self.depth + 1)
+            self.contents = expr_parser.resolve()
+            self.contents = [Expr_parser(i,depth=self.depth+1).resolve() for i in self.contents]
 
     # def __repr__(self):
     #     return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
@@ -1359,11 +1366,15 @@ class DecFunc(Elem):
         wasm_code += "(func ${}\n".format(funcname) # open func    
         for i in args:
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
-        if r_type: # TODO: 自作の型などについての設定
+        if r_type:                                                           # TODO: 自作の型などについての設定
             if r_type[0].get_contents() == "void":
                 pass
-            else:
-                wasm_code += "(result {})\n".format(r_type[0].get_contents())
+            else:  #TODO: 仮
+                print(r_type[0].get_contents())
+                if type(r_type[0].get_contents()) is list:
+                    wasm_code += "(result {})\n".format(" ".join(r_type[0].get_contents()))
+                else:
+                    wasm_code += "(result {})\n".format(r_type[0].get_contents())
         else:
             raise BaseException("返り値が設定されていません")
         for i in self.get_all_local_value():
@@ -1388,6 +1399,7 @@ class DecFunc(Elem):
         """
         parser = Parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
+        print("dec funv",self.args)
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
@@ -1952,8 +1964,54 @@ class Type_parser(Parser):
     型解析用
     """
     def __init__(self,code:str) -> None:
+        """
+        - lichenが基本で用意する型
+          - i32,i64,f32,f64 //プリミティブ型
+          - () // tupleタプル(格納可能な要素は限定される)
+            プリミティブ型だけしか入れられない
+          - Vec<T> //実体はタプル
+          - Mat<T> //実体はタプル
+          - List<T> //実体は先頭ポインター
+         
+        - 複数値の返却とともに複数値の同時代入も作成する
+          ```lc
+          let x,y : (i32,i32) = pair(); // pair():(i32,i32)
+          ```
+          的な文法
+         
+        - ベクトル、行列の演算
+          - Vec2 // 実体は(i32,i32)のタプル
+          - Vec3 // 実体は(i32,i32,i32)
+          - Vec4
+          - Vec5<i32>
+          - ...
+          - Mat2x2 // 実体は(T, T, T, T)
+          - Mat3x4 // 実体は(T, T, T, T, T, T, T, T, T, T, T, T)
+          - Mat4x...
+          a*b
+
+
+        """
         self.code = code
-    
+        self.primitive_types = [
+            "i32",
+            "i64",
+            "f32",
+            "f64",
+        ]
+        self.basic_types = [
+            "i32",
+            "i64",
+            "f32",
+            "f64"
+        ]
+        self.basic_types_vec = "Vec"   # vector
+        self.basic_types_mat = "Mat"   # matrix
+        self.basic_types_list = "List" # list
+        self.basic_types_tuple = ""    # tuple
+        self.open = "<"
+        self.close = ">"
+
     def code2vec(self, code: str) -> list[str]:
         """
         # code2vec
