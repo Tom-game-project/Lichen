@@ -36,8 +36,28 @@
 )   
     </pre>
     <script type="text/javascript">
-        WebAssembly.instantiateStreaming(fetch("ex00.wasm")).then((obj) => {
-            console.log(obj.instance.exports.gcd(123456789, 987654321)); 
+        function tarai(x,y,z){
+            if (x <= y){
+                return y;
+            }else{
+                console.log(x,y,z);
+                return tarai(
+                    tarai(x-1,y,z),
+                    tarai(y-1,z,x),
+                    tarai(z-1,x,y)
+                )
+            }
+        }
+const importObject = {
+            console: { print3: (a,b,c)=>{console.log(a,b,c)} },
+        };
+        WebAssembly.instantiateStreaming(fetch("ex00.wasm"),importObject).then((obj) => {
+            console.log(obj.instance.exports.gcd(123456789, 987654321));
+
+            console.log(obj.instance.exports.up(2,1)); 
+            console.log(obj.instance.exports.up(1,2));
+            //console.log(tarai(2,1,0));
+            console.log(obj.instance.exports.tarai(2,1,0)); 
         });
     </script>
 </body>

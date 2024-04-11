@@ -1103,10 +1103,11 @@ class Func(Elem):
 
             "==":"i32.eq",# Equal => TODO : i32.eqz
             "!=":"i32.ne",# Not equal 
-            "<":"i32.lt_u",# Less than
-            ">":"i32.gt_u", # greater than
-            "<=":"i32.le_u", # Less or equal
-            ">=":"i32.ge_u", # greater or equal
+            # lt_u lt_sはsigned unsignedの違い気をつける
+            "<":"i32.lt_s",# Less than
+            ">":"i32.gt_s", # greater than
+            "<=":"i32.le_s", # Less or equal
+            ">=":"i32.ge_s", # greater or equal
 
             "&&":"i32.and", # and
             "||":"i32.or", # or
