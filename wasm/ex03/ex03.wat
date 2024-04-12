@@ -177,6 +177,21 @@
             )
         )  
     )
+    (func $while10_continue_test0
+        (block ;;1
+            (loop ;;0
+                i32.const 10
+                local.get $t
+                i32.eq
+                br_if 1
+                local.get $t
+                i32.const 1
+                i32.add 
+                local.set $t
+                br 0
+            )
+        )
+    )
 
     (func $main
         call $while10_test00

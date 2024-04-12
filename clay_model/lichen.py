@@ -867,7 +867,7 @@ class Syntax(Elem):
                 wasm_code += self.expr[0].wat_format_gen()
             else:
                 # ifに条件式が与えられていない場合
-                raise BaseException("Error!")
+                raise BaseException("Error! if節の条件を書いてください")
             if return_type == "None": #                         TODO : 型推論の実装をしたときに変更する
                 wasm_code += "if\n"
             else:
@@ -922,9 +922,51 @@ class Syntax(Elem):
         return wasm_code
 
     def __proc_while(self) -> str: # 工事中:TODO
+        """
+        ```wasm
+        (loop ;; 0
+            (block ;;1
+                ;;while (i < 10)
+                local.get $i
+                i32.const 10
+                i32.lt_u
+                if
+                nop
+                else
+                br 1 ;;end of loop
+                end
+                ;; ここに処理を書く
+                local.get $i
+                call $log
+                ;; i += 1
+                local.get $i
+                i32.const 1
+                i32.add
+                local.set $i
+                br 0
+            )
+        )  
+        ```
+        """
         wasm_code = ""
         if self.name == "while":
-            pass#TODO
+            wasm_code = "(loop \n"
+            wasm_code = "(block \n"
+            if self.get_expr():
+                wasm_code += self.expr[0].wat_format_gen()
+                wasm += "if\n"
+                wasm += "nop\n"
+                wasm += "else\n"
+                wasm += "br{} \n".format() # TODO
+                wasm += "end\n"
+            else:
+                raise BaseException("Error! while節を書いてください")
+            # 処理
+            if self.contents: # ブロック内の処理
+                wasm_code += self.contents[0].wat_format_gen()
+            wasm_code += "br {} \n".format() # TODO
+            wasm_code += ")"
+            wasm_code += ")"
         elif self.name == "else":
             pass#TODO
         else:
