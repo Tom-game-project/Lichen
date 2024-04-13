@@ -2,6 +2,8 @@
   (import "console" "print" (func $print (param i32) (param i32)))
   (import "js" "mem" (memory 1))
   (data (i32.const 0) "\00\01\00\00\02\00\00\00\ff\ff\ff\ff")
+  ;; 0xffffffff == 2**32 - 1
+  ;; 0xffffffffffffffff == 2**64 - 1
   (data (i32.const 12) "helloworld")
   ;;(memory (export "mem") 1 2)
   (func (export "sum") (param $n i32) (result i32)

@@ -12,8 +12,9 @@ import copy
 class Parser:
     # resolve <expr>
     # 式を解決します
-    def __init__(self, code:str,depth = 0) -> None:
+    def __init__(self, code:str,loopdepth = 0,depth = 0) -> None:
         self.code:str = code
+        self.loopdepth=loopdepth
         self.depth:int = depth
 
         # setting
@@ -627,8 +628,8 @@ class Expr_parser(Parser): # 式について解決します
     # expressions resolver
     ## 式について解決します
     """
-    def __init__(self, code: str,depth = 0) -> None:
-        super().__init__(code)
+    def __init__(self, code: str, loopdepth = 0,depth = 0) -> None:
+        super().__init__(code,loopdepth=loopdepth)
         self.depth = depth
 
     def grouping_syntaxbox(self,vec:list) -> list:
@@ -715,8 +716,8 @@ class State_parser(Parser): # 文について解決します
     TODO Parenblock内の引数宣言ex) (a:i32,b:i32)
     TODO 変数宣言時の明示的な型宣言 a:Vec<i32>
     """
-    def __init__(self, code: str, depth = 0) -> None:
-        super().__init__(code)
+    def __init__(self, code: str, loopdepth = 0, depth = 0) -> None:
+        super().__init__(code,loopdepth=loopdepth)
         self.depth = depth
 
     def code2vec(self, code: str) -> list:
