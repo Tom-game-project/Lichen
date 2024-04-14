@@ -183,7 +183,12 @@ class Parser:
                 if depth > 0:
                     group.append(i)
                 elif depth == 0:
-                    rlist.append(ObjectInstance(None,copy.copy(group),self.depth))
+                    rlist.append(ObjectInstance(
+                        None,
+                        copy.copy(group),
+                        self.depth,
+                        self.loopdepth
+                    ))
                     group.clear()
                 else:
                     print("Error!")
@@ -265,7 +270,8 @@ class Parser:
                                 name.get_contents(),
                                 None,
                                 block.get_contents(),
-                                self.depth
+                                self.depth,
+                                self.loopdepth
                             )
                         )
                     elif len(group) == 3:
@@ -277,7 +283,8 @@ class Parser:
                                 name.get_contents(),
                                 paren.get_contents(),
                                 block.get_contents(),
-                                self.depth
+                                self.depth,
+                                self.loopdepth
                             )
                         )
                     else:
@@ -316,7 +323,8 @@ class Parser:
                         ObjectInstance(
                             name_tmp.get_contents(),# func name
                             i.get_contents(),#self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
-                            self.depth
+                            self.depth,
+                            self.loopdepth
                     ))
                     name_tmp = None
                     flag = False
@@ -378,7 +386,7 @@ class Parser:
             else: # flagを下げるべきとき
                 if flag:
                     if group:
-                        rlist.append(List(expr,copy.copy(group),self.depth))
+                        rlist.append(List(expr,copy.copy(group),self.depth,self.loopdepth))
                         expr = None
                         group.clear()
                     else:
@@ -400,7 +408,7 @@ class Parser:
         if group or expr is not None:# なにか、残っている場合
             if flag:
                 if group:
-                    rlist.append(List(expr,copy.copy(group),self.depth))
+                    rlist.append(List(expr,copy.copy(group),self.depth,self.loopdepth))
                     expr = None
                     group.clear()
                 else:
@@ -600,7 +608,8 @@ class Parser:
             return [Func(
                 vec[operation_index], # operation name (func name)
                 [pre_group,post_group],# operation args (func args)
-                self.depth
+                self.depth,
+                self.loopdepth
             )]
         else:
             return vec
@@ -655,7 +664,7 @@ class Expr_parser(Parser): # 式について解決します
                 elif i.get_name() == "else":
                     if flag:
                         group.append(i)
-                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
+                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth,self.loopdepth))
                         group.clear()
                         name = None
                         flag = False
@@ -666,7 +675,7 @@ class Expr_parser(Parser): # 式について解決します
             else:
                 if flag:
                     if group:
-                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
+                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth,self.loopdepth))
                         group.clear()
                         name = None
                     else: # group is empty
@@ -676,7 +685,7 @@ class Expr_parser(Parser): # 式について解決します
                     pass
                 rlist.append(i)
         if group:
-            rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
+            rlist.append(SyntaxBox(name,copy.copy(group),self.depth,self.loopdepth))
         return rlist
 
     def code2vec(self,code:str) ->list:
@@ -855,7 +864,7 @@ class State_parser(Parser): # 文について解決します
         """
         # __group_contents_decvalue
         """
-        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group),self.depth))
+        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group),self.depth,self.loopdepth))
         rtype_group.clear()
         contents_group.clear()
         value_name = None
@@ -879,7 +888,7 @@ class State_parser(Parser): # 文について解決します
                 name = i.get_contents() # name :example (return, break ,continue, assert)
                 flag = True
             elif type(i) is str and i == ';' and flag:
-                rlist.append(ControlStatement(name,copy.copy(expr_group),self.depth))
+                rlist.append(ControlStatement(name,copy.copy(expr_group),self.depth,self.loopdepth))
                 expr_group.clear()
                 flag = False
             elif flag:
@@ -917,16 +926,16 @@ class State_parser(Parser): # 文について解決します
         for i in vec:
             if any(map(lambda a:type (i) is a,excludes)):
                 if group:
-                    rlist.append(Expr(None,copy.copy(group),self.depth))
+                    rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
                     group.clear()
                 rlist.append(i)
             elif type(i) is str and i == ";":
-                rlist.append(Expr(None,copy.copy(group),self.depth))
+                rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
                 group.clear()
             else:
                 group.append(i)
         if group:
-            rlist.append(Expr(None,copy.copy(group),self.depth))
+            rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
         return rlist
 
     def resolve(self):
@@ -1241,15 +1250,16 @@ class Syntax(Elem):
     def get_expr(self):
         return self.expr
 
-    def resolve_self(self):
+    def resolve_self(self,isloop = False):
         """
         # resolve_self
         ## if while for loop などを解決する
         """
-        state_parser = State_parser(self.contents, depth = self.depth + 1)
+        loopdepth: int = self.loopdepth + 1 if isloop else self.loopdepth
+        state_parser = State_parser(self.contents, depth = self.depth + 1, loopdepth = loopdepth)
         self.contents = state_parser.resolve()
         if self.expr is not None:
-            expr_parser = Expr_parser(self.expr, depth = self.depth + 1)
+            expr_parser = Expr_parser(self.expr, depth = self.depth + 1, loopdepth = loopdepth)
             self.expr = expr_parser.resolve()
         else:
             pass
@@ -1360,21 +1370,21 @@ class Syntax(Elem):
         """
         wasm_code = ""
         if self.name == "while":
-            wasm_code = "(loop \n"
-            wasm_code = "(block \n"
+            wasm_code += "(loop \n"
+            wasm_code += "(block \n"
             if self.get_expr():
                 wasm_code += self.expr[0].wat_format_gen()
-                wasm += "if\n"
-                wasm += "nop\n"
-                wasm += "else\n"
-                wasm += "br{} \n".format() # TODO
-                wasm += "end\n"
+                wasm_code += "if\n"
+                wasm_code += "nop\n"
+                wasm_code += "else\n"
+                wasm_code += "br {} \n".format(self.loopdepth * 2 + 1) # TODO
+                wasm_code += "end\n"
             else:
                 raise BaseException("Error! while節を書いてください")
             # 処理
-            if self.contents: # ブロック内の処理
-                wasm_code += self.contents[0].wat_format_gen()
-            wasm_code += "br {} \n".format() # TODO
+            for i in self.contents:
+                wasm_code += i.wat_format_gen()
+            wasm_code += "br {} \n".format(self.loopdepth * 2) # TODO
             wasm_code += ")"
             wasm_code += ")"
         elif self.name == "else":
@@ -1442,7 +1452,10 @@ class SyntaxBox(Elem):
         ここではparserを呼び出さないのでdepthを深くしない
         """
         for i in self.contents:
-            i.resolve_self()
+            if self.name in ["while","for","loop"]:
+                i.resolve_self(isloop = True)
+            else:
+                i.resolve_self()
 
     def get_all_local_value(self):
         rlist:list = list()
@@ -1526,7 +1539,8 @@ class SyntaxBox(Elem):
         elif self.name == "loop":
             pass # TODO
         elif self.name == "while":
-            pass # TODO
+            for i in self.contents:
+                wasm_code += i.wat_format_gen("while")
         elif self.name == "for":
             pass # TODO
         else:
