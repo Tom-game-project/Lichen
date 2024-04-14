@@ -7,12 +7,14 @@ TODO : コメントをかけるようにする
 """
 import copy
 
+# === Parser ===
 
 class Parser:
     # resolve <expr>
     # 式を解決します
-    def __init__(self, code:str,depth = 0) -> None:
+    def __init__(self, code:str,loopdepth = 0,depth = 0) -> None:
         self.code:str = code
+        self.loopdepth=loopdepth
         self.depth:int = depth
 
         # setting
@@ -181,7 +183,12 @@ class Parser:
                 if depth > 0:
                     group.append(i)
                 elif depth == 0:
-                    rlist.append(ObjectInstance(None,copy.copy(group),self.depth))
+                    rlist.append(ObjectInstance(
+                        None,
+                        copy.copy(group),
+                        self.depth,
+                        self.loopdepth
+                    ))
                     group.clear()
                 else:
                     print("Error!")
@@ -263,7 +270,8 @@ class Parser:
                                 name.get_contents(),
                                 None,
                                 block.get_contents(),
-                                self.depth
+                                self.depth,
+                                self.loopdepth
                             )
                         )
                     elif len(group) == 3:
@@ -275,7 +283,8 @@ class Parser:
                                 name.get_contents(),
                                 paren.get_contents(),
                                 block.get_contents(),
-                                self.depth
+                                self.depth,
+                                self.loopdepth
                             )
                         )
                     else:
@@ -313,8 +322,9 @@ class Parser:
                     rlist.append(
                         ObjectInstance(
                             name_tmp.get_contents(),# func name
-                            self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
-                            self.depth
+                            i.get_contents(),#self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
+                            self.depth,
+                            self.loopdepth
                     ))
                     name_tmp = None
                     flag = False
@@ -376,7 +386,7 @@ class Parser:
             else: # flagを下げるべきとき
                 if flag:
                     if group:
-                        rlist.append(List(expr,copy.copy(group),self.depth))
+                        rlist.append(List(expr,copy.copy(group),self.depth,self.loopdepth))
                         expr = None
                         group.clear()
                     else:
@@ -398,7 +408,7 @@ class Parser:
         if group or expr is not None:# なにか、残っている場合
             if flag:
                 if group:
-                    rlist.append(List(expr,copy.copy(group),self.depth))
+                    rlist.append(List(expr,copy.copy(group),self.depth,self.loopdepth))
                     expr = None
                     group.clear()
                 else:
@@ -468,7 +478,7 @@ class Parser:
         return rlist
 
     # comma_spliter
-    def comma_spliter(self,vec:list) -> "Data":
+    def comma_spliter(self,vec:list) -> list:
         """
         # comma_spliter 
         (a,b,c,) == (a,b,c)
@@ -598,7 +608,8 @@ class Parser:
             return [Func(
                 vec[operation_index], # operation name (func name)
                 [pre_group,post_group],# operation args (func args)
-                self.depth
+                self.depth,
+                self.loopdepth
             )]
         else:
             return vec
@@ -616,962 +627,9 @@ class Parser:
         関数の引数の解決
         """
         rlist:list = list()
-        for i in self.code:
-            rlist.append(self.__resolve_func_arg_unit(i))
+        rlist = self.__resolve_func_arg_unit(self.code)
+        rlist = self.comma_spliter(rlist)
         return rlist
-
-
-# Base Elem
-class Elem:
-    """
-    字句解析用データ型
-    """
-    def __init__(self, name:str, contents:str,depth:int) -> None:
-        self.name = name
-        self.contents = contents
-        self.depth = depth
-
-    def get_contents(self):return self.contents
-
-    def get_name(self):return self.name
-
-    def wat_format_gen(self) -> str:
-        """
-        # wat_format_gen
-
-        """
-        return f"({type(self).__name__} 未実装)\n"
-
-    def resolve_self(self):
-        """
-        # resolve_self
-        それぞれのデータ型で再帰的に処理をする
-        """
-        print(f"resolve_self 未実装 {type(self).__name__}")
-
-    def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) contents:({self.contents})>"
-
-    def show(self):
-        """
-        # show
-        TODO 
-        階層構造を見やすく表示します
-        """
-        return " "*self.depth + f"""<{type(self).__name__} name:({self.name})
-contents:({self.contents})>"""
-    
-    def get_all_local_value(self):
-        """
-        # get_all_local_value
-
-        関数内に存在するローカル変数宣言をすべて取得する
-        持たない場合は空リストを返却する
-        """
-        # print(f"{type(self).__name__} get_all_local_value 未実装")
-        return []
-
-## Elements
-### basic elements
-class Block(Elem):
-    """
-    処理集合を格納
-    <block> = {
-        <proc>
-    }
-    <proc> = <expr> ;...
-    # returns
-    get_contents -> <proc>
-    """
-    def __init__(self, name: str, contents: str, depth:int) -> None:super().__init__(name, contents,depth)
-
-    def resolve_self(self):
-        state_parser = State_parser(self.contents, depth = self.depth + 1)
-        self.contents = state_parser.resolve()
-
-    def get_all_local_value(self) -> list[Elem]:
-        rlist:list = list()
-        for i in self.contents:
-            # ローカル変数を含んだリスト
-            local_vlaue:list = i.get_all_local_value()
-            rlist += local_vlaue
-        return rlist
-
-    def wat_format_gen(self) -> str:
-        """
-        # wat_format_gen 
-        各々の要素に対してwatcodeを生成させる
-        """
-        wasm_code:str = str()
-        for i in self.contents:
-            wasm_code += i.wat_format_gen()
-        return wasm_code
-        # return "<処理>"
-
-class String(Elem):
-    """
-    文字列を格納
-    "<string>"
-    '<char>'
-    # returns
-    get_contents -> <string> or <char>
-    """
-    def __init__(self, name: str, contents: str, depth: int) -> None:
-        super().__init__(name, contents, depth)
-
-    def resolve_self(self):
-        """
-        Stringの場合は何もする必要がない
-        """
-        pass
-
-class ListBlock(Elem):
-    """
-    リストを格納
-    [<expr>,...]
-    # returns
-    get_contents -> [<expr>,...] # 式集合
-    """
-    def resolve_self_unit(self,expr):
-        expr_parser = Expr_parser(expr)
-        return expr_parser.resolve()
-
-    def resolve_self(self):
-        expr = self.get_contents()
-        parser = Parser(expr, depth = self.depth + 1)
-        self.contents = [self.resolve_self_unit(i) for i in parser.resolve()]
-
-    def __init__(self, name: str, contents: str, depth: int) -> None:
-        super().__init__(name, contents, depth)
-
-class ParenBlock(Elem):
-    """
-    式ブロック
-    または
-    関数の引数宣言部
-    (<expr>,...)
-    or
-    (<dec>,...)
-    <dec> = <word>:<type>
-    # returns
-    get_contents -> <expr>,... # 式集合 式の範囲で宣言集合になることはない
-    """
-    def __init__(self, name: str, contents: str, depth: int) -> None:
-        super().__init__(name, contents, depth)
-
-    def resolve_self(self):
-        expr = self.get_contents()
-        parser = Expr_parser(expr, depth = self.depth + 1)
-        self.contents = parser.resolve()
-
-    def wat_format_gen(self):
-        """
-# wat_format_gen
-このmethodが呼び出されるときselfは
-式の優先順位変更に使用するParenBlockであることに注意
-        """
-        return self.contents[0].wat_format_gen()
-
-class Word(Elem):# Word Elemは仮どめ
-    """
-    引数、変数、関数定義、制御文法の文字列
-    <word> = fn, let, const, if, while...(exclude: +, -, *, /)
-    <word> = <syntax>, <name>, <type>, <Number>
-    # returns
-    get_contents -> <word>
-    """
-    def __init__(self, name: str, contents: str, depth: int) -> None:
-        super().__init__(name, contents, depth)
-
-    def resolve_self(self):
-        """
-        Wordの場合は何もする必要がない
-        """
-        pass
-
-    def __self_is_i32(self) -> bool:
-        """
-# self_is_i32
-自分自身がi32であった場合、Trueを返却
-        """
-        for i in self.contents:
-            if '0' <= i <= '9':
-                pass
-            else:
-                return False
-        return True
-    
-    def wat_format_gen(self,minus=False):
-        """
-        # wat_format_gen
-        ## param
-        # ある数字が負の値であるとき、 
-        ## TODO:数字ではない場合
-        """
-        if self.__self_is_i32():
-            return "i32.const {}{}\n".format(
-                '-' if minus else '',
-                self.contents
-            )
-        else:
-            return "local.get ${}\n".format(self.contents)
-
-class Syntax(Elem):
-    """
-    # returns
-    <syntax> = if, elif, else, loop, for, while
-    get_name ->  if, elif, else, loop, for, while
-    get_expr -> <expr>
-    get_contents -> {<proc>}
-    """ 
-    def __init__(self, name: str, expr, contents, depth:int) -> None:
-        super().__init__(name, contents, depth)
-        self.expr = expr
-
-    def get_expr(self):
-        return self.expr
-
-    def resolve_self(self):
-        """
-        # resolve_self
-        ## if while for loop などを解決する
-        """
-        state_parser = State_parser(self.contents, depth = self.depth + 1)
-        self.contents = state_parser.resolve()
-        if self.expr is not None:
-            expr_parser = Expr_parser(self.expr, depth = self.depth + 1)
-            self.expr = expr_parser.resolve()
-        else:
-            pass
-
-    def __repr__(self):
-        # override
-        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
-
-    def get_all_local_value(self):
-        rlist:list = list()
-        for i in self.contents:
-            local_value = i.get_all_local_value()
-            rlist += local_value
-        return rlist
-
-    def __proc_if(self,return_type = "None") -> str: # 工事中:TODO
-        """
-        # __proc_if 
-        headがifだった時の処理
-        return_type "None"|"return"|""|
-        """
-        wasm_code:str = ""
-        if self.name == "if":
-            if self.expr: # <式>
-                wasm_code += self.expr[0].wat_format_gen()
-            else:
-                # ifに条件式が与えられていない場合
-                raise BaseException("Error!")
-            if return_type == "None": #                         TODO : 型推論の実装をしたときに変更する
-                wasm_code += "if\n"
-            else:
-                wasm_code += "if (result i32)\n"
-            if self.contents: # ブロック内の処理
-                wasm_code += self.contents[0].wat_format_gen()
-            else:
-                raise BaseException("Error!")
-        elif self.name == "elif":
-            """
-            # elif
-            ```wat
-            else
-            ;; <式>
-            if
-            ;; <処理>
-            ```
-            """
-            wasm_code += "else\n"
-            if self.expr:# <式>
-                wasm_code += self.expr[0].wat_format_gen()
-            else: # ifに条件式が与えられていない場合
-                raise BaseException("Error!")
-            if return_type == "None": #                         TODO : 型推論の実装をしたときに変更する
-                wasm_code += "if\n"
-            else:
-                wasm_code += "if (result i32)\n"
-            if self.contents: # ブロック内の処理
-                wasm_code += self.contents[0].wat_format_gen()
-            else:
-                raise BaseException("Error!")
-        elif self.name == "else":
-            if self.expr:
-                # ここには式は存在しないはず
-                raise BaseException("Error!")
-            wasm_code += "else\n"
-            if self.contents: # ブロック内の処理
-                wasm_code += self.contents[0].wat_format_gen()
-        else:
-            raise BaseException("Error!")
-        return wasm_code
-
-    def __proc_loop(self) -> str: # 工事中:TODO
-        wasm_code = ""
-        if self.name == "loop":
-            pass#TODO
-        elif self.name == "else":
-            pass#TODO
-        else:
-            raise BaseException("Error!")
-        wasm_code += "未実装\n"
-        return wasm_code
-
-    def __proc_while(self) -> str: # 工事中:TODO
-        wasm_code = ""
-        if self.name == "while":
-            pass#TODO
-        elif self.name == "else":
-            pass#TODO
-        else:
-            raise BaseException("Error!")
-        return wasm_code
-
-    def __proc_for(self) -> str: # 工事中:TODO
-        wasm_code = ""
-        if self.name == "for":
-            pass#TODO
-        elif self.name == "else":
-            pass#TODO
-        else:
-            raise BaseException("Error!")
-        return wasm_code
-
-    def wat_format_gen(self,syntax_head:str,return_type = "None") -> str:
-        """
-        # wat_format_gen 
-        TODO:これは、非効率的な実装、あとで書き直す
-        ## pattern
-        - if 
-          - if
-          - elif
-          - else
-        - loop
-          - loop
-          - else
-        - while
-          - while
-          - else
-        - for
-          - for
-          - else
-        """
-        wasm_code:str = ""
-        if syntax_head == "if":
-            # wasmとlichenのロジックに従って適切な変換を行う
-            wasm_code += self.__proc_if(return_type=return_type)
-        elif syntax_head == "loop":
-            wasm_code += self.__proc_loop()
-        elif syntax_head == "while":
-            wasm_code += self.__proc_while()
-        elif syntax_head == "for":
-            wasm_code += self.__proc_for()
-        else:
-            raise BaseException("Error!")
-        return wasm_code
-
-class SyntaxBox(Elem):
-    """
-    # SyntaxBox
-    if elif else,loop else,while elseなどの連続して解釈されるコードを集めます
-    
-    """
-    def __init__(self, name: str, contents: list[Syntax], depth:int) -> None:
-        super().__init__(name, contents, depth)
-
-    def resolve_self(self):
-        """
-        listの各要素は、すべてSyntaxになっているはずなので、
-        それぞれのsyntax要素のresolve_self methodを呼び出せば良い
-        ここではparserを呼び出さないのでdepthを深くしない
-        """
-        for i in self.contents:
-            i.resolve_self()
-
-    def get_all_local_value(self):
-        rlist:list = list()
-        for i in self.contents:
-            local_value = i.get_all_local_value()
-            rlist += local_value
-        return rlist
-
-    def __count_name(self,name:str) -> int:
-        """
-        # __count 
-        contentsボックス内の特定のsyntaxを数えます
-        """
-        counter:int = 0
-        for i in self.contents:
-            if i.name == name:
-                counter += 1
-        return counter
-
-    def __include_return_in_contents(self, elements:list) -> bool:
-        """
-        # __include_return
-        """
-        for i in elements:
-            if type(i) is ControlStatement and i.get_name() == "return":
-                return True
-        return False
-
-    def __if_has_else(self, elements:list) -> bool:
-        return any(
-            map(
-                lambda a:a.name == "else",
-                elements
-                )
-            )
-
-    def __if_unreachable_checker(self) -> bool:
-        """
-        # __if_unreachable_checker
-        ifに到達する可能性があるのかないのかをcheckするメソッド
-        if ステートメントないのすべてのブロックがreturn を含んでいるかどうかをcheckする
-        """
-        # for i in self.contents:
-        #     print(":::",i.contents)
-        #     print(self.__include_return_in_contents(i.contents))
-        return all(
-            map(
-                lambda i:
-                    self.__include_return_in_contents(i.contents),
-                self.contents
-                )
-            )
-
-    def wat_format_gen(self) -> str:
-        """
-        # wat_format_gen 
-        制御文や、制御式をwasmにして返す
-        - if
-        - loop
-        - for
-        - while
-        # TODO:if文の実装
-        """
-        wasm_code = ""
-        if self.name == "if":
-            # ifが続く場合
-            # if 返り値用変数
-            # 
-            all_if_block_has_return = self.__if_unreachable_checker() and self.__if_has_else(self.contents)
-            for i in self.contents:                 # contents内の要素はすべて、syntax
-                if all_if_block_has_return:
-                    print(i)
-                    wasm_code += i.wat_format_gen("if",return_type = "None") # if elif else
-                else:
-                    wasm_code += i.wat_format_gen("if",return_type = "i32")
-            wasm_code += "end\n"*self.__count_name("elif")            # elif end 開いたelif分だけendで閉じる必要がある
-            wasm_code += "end\n"                                      # if ... end このendはifをセットである
-            if all_if_block_has_return:
-                # すべてのブロックがreturnをした場合end後には到達不可能ため
-                wasm_code += "unreachable\n"
-        elif self.name == "loop":
-            pass # TODO
-        elif self.name == "while":
-            pass # TODO
-        elif self.name == "for":
-            pass # TODO
-        else:
-            raise BaseException("Error!")
-        return wasm_code
-
-class Func(Elem):
-    """
-    # TODO:resolve args
-    srgs:[<expr>,...]のような形を期待する
-    <name(excludes: 0-9)>(<expr>,...)
-    # returns
-    get_contents -> (args:[<expr>,...])
-    get_name -> (funcname: <name>)
-    """
-    def __init__(self, name: str, contents: list, depth:int) -> None:
-        super().__init__(name, contents, depth)
-        # TODO : 引数の型チェックを入れる
-        self.wasm_ope_correspondence_table = {
-            # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
-            "+":"i32.add", # add
-            "-":"i32.sub", # sub 
-            "*":"i32.mul", # mul
-            "/":"i32.div_u",# div
-            "%":"i32.rem_u", # mod 
-
-            "==":"i32.eq",# Equal => TODO : i32.eqz
-            "!=":"i32.ne",# Not equal 
-            "<":"i32.lt_u",# Less than
-            ">":"i32.gt_u", # greater than
-            "<=":"i32.le_u", # Less or equal
-            ">=":"i32.ge_u", # greater or equal
-
-            "&&":"i32.and", # and
-            "||":"i32.or", # or
-
-            "=":"local.set"
-        }
-        self.wasm_special_ope_correspondence_table:list = {
-            "+=":"i32.add",
-            "-=":"i32.sub",
-            "*=":"i32.mul",
-            "/=":"i32.div_u",
-            "%=":"i32.rem_u",
-        }
-    
-    def wat_format_gen(self) -> str:
-        """
-        # Func.wat_format_gen
-        
-        ## TODO:否定!などのprefixについての処理
-
-        """
-        wasm_code = ""
-        call_name:str = None
-        if type(self.name) is Operator:
-            if self.name.get_contents() == '=':
-                # "=", "+="などの特殊な場合 
-                if len(self.contents) == 2:
-                    for i in self.contents[1:]:# 0番目を飛ばす
-                        if len(i) == 0:        # TODO
-                            pass
-                        else:
-                            wasm_code += i[0].wat_format_gen()
-                    # 以下の一行で`self.contents[0][0]`は必ずWordオブジェクトにならなければいけない
-                    wasm_code += "local.set ${}\n".format(self.contents[0][0].get_contents())
-                else:
-                    # error
-                    # a = b
-                    # かならず引数は2つになるはずなのでそれ以外の場合はError!
-                    raise BaseException("Error!")
-            elif self.name.get_contents() in self.wasm_special_ope_correspondence_table:
-                # `+=`や`-=`のとき
-                # 演算子は両脇に2つの引数を取る
-                wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
-                # print("-"*50,self.contents[1][0])
-                wasm_code += self.contents[1][0].wat_format_gen()
-                wasm_code += "local.set ${}\n".format(self.contents[0][0].contents)
-            elif self.name.get_contents() in self.wasm_ope_correspondence_table:
-                # 普通の演算子(代入やincrではない)場合
-                #
-                # 特別な演算子、incr decrの場合は別の処理をする
-                if len(self.contents) == 2:
-                    call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
-                    if self.contents[0]:
-                        # 通常と同じ
-                        wasm_code += self.contents[0][0].wat_format_gen() # 左側
-                        wasm_code += self.contents[1][0].wat_format_gen() # 右側
-                        wasm_code += call_name + '\n'
-                    else: # self.contents[0]が空の配列だった場合
-                        # -10のような書き方をしている場合
-                        # 以下のように変換したい
-                        # const.i32 -10
-                        if self.name.get_contents() == "+":
-                            wasm_code += self.contents[1][0].wat_format_gen(minus = False)
-                        elif self.name.get_contents() == "-":
-                            # 例.
-                            # const.i32 -10
-                            # self.contents[1][0] # これは絶対にWordオブジェクトになる
-                            wasm_code += self.contents[1][0].wat_format_gen(minus = True)
-                        else: # 例えば"/10"みたいな書き方がエラー
-                            raise BaseException("Error!:invalid syntax")
-                else:
-                    # 二項演算の引数が2つ以上またはそれ以下
-                    raise BaseException("Error!")
-                # call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
-                # print(self.contents)
-                # for i in self.contents: # per arg
-                #     if len(i) == 0:        # TODO
-                #         pass
-                #     else:
-                #         wasm_code += i[0].wat_format_gen()
-                # wasm_code += call_name + '\n'
-            else:
-                call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
-                print(self.contents)
-                for i in self.contents: # per arg
-                    if len(i) == 0:        # TODO
-                        pass
-                    else:
-                        wasm_code += i[0].wat_format_gen()
-                wasm_code += call_name + '\n'
-        elif type(self.name) is str:
-            for i in self.contents: # per arg
-                if len(i) == 0:        # TODO
-                    pass
-                else:
-                    wasm_code += i[0].wat_format_gen()
-            wasm_code += "call ${}\n".format(self.name)
-        else:
-            pass
-        return wasm_code
-
-    def resolve_self_unit(self,expr:list):
-        parser = Expr_parser(expr, depth = self.depth + 1)
-        return parser.resolve()
-
-    def resolve_self(self):
-        args = self.get_contents()
-        self.contents = [self.resolve_self_unit(i) for i in args]
-
-    # def __repr__(self):
-    #     return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
-
-class List(Elem):
-    """
-    # List 
-    ## index呼び出しは少し複雑である
-    
-    返り値があるようなElemについてすべてindexを指定することは可能である
-    <List>:
-        <name>[<expr>]                     ex) arr[0]
-        <Func>[<expr>]                     ex) arr_gen()[0]
-        (ListData:[<expr>,...])[<expr>]    ex) [0,1,2][a]
-        <syntax> [<expr>]                  ex) if (a){[0,1]}else{[1,0]}[a]
-    多次元配列の場合
-        <List>[<expr>]                     ex) arr[0][0][0]
-
-    # returns
-    get_contents -> (index:[<expr,...>])
-    get_name -> (listname:<name>)
-    """
-    def __init__(self, expr: str, index: list[ListBlock],depth:int) -> None:
-        super().__init__(None, None, depth)
-        self.expr = expr
-        self.index_list = index
-
-    def resolve_self_unit(self,expr):
-        expr_parser = Expr_parser(expr, depth = self.depth + 1)
-        return expr_parser.resolve()
-
-    def resolve_self(self):
-        """
-        # resolve_self 
-        ## 処理前
-        ```
-        index_list = [<ListBlock>,...]
-        ```
-        ## 処理後
-        ```
-        index_list = [<expr>,<expr>]
-        ```
-        """
-        self.index_list = [self.resolve_self_unit(i.get_contents()) for i in self.index_list]
-
-    def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.expr}) index:({self.index_list})>"
-
-class Operator(Elem):
-    """
-    # returns
-    get_contents -> ope(ope:["+","-","*","/",...])
-    """
-
-    def __init__(self, ope:str, depth:int) -> None:
-        super().__init__(None, ope, depth)
-        self.ope = ope
-
-    def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) ope:({self.ope})>"
-
-class Data(Elem):
-    """
-    # Data
-    カンマ区切りのデータに対して処理を行います。
-    """
-    def __init__(self,data:list, depth:int) -> None:
-        super().__init__(None, None, depth)
-        self.data:list = data
-
-    def get_data(self):
-        return self.data
-
-    def __repr__(self):
-        text:str = ""
-        for i in self.data:text += repr(i) + ",\n"
-        return f"<{type(self).__name__} depth:({self.depth}) data:({text})>"
-
-class Arg(Elem):
-    """
-    # ArgParse
-    ## 引数エレメント
-    """
-    def __init__(self, name: str, type_: str, depth:int) -> None:
-        super().__init__(name, type_, depth)
-
-### function declaration
-class DecFunc(Elem):
-    """
-    関数の宣言部分
-    (pub) fn <name><parenblock>:<type> <block>
-    args
-    TODO:decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
-    """
-    def __init__(self, funcname:str,args:list,return_type, contents: Block,pub_flag:bool, depth:int) -> None:
-        super().__init__(funcname, contents, depth)
-        self.return_type = return_type
-        self.args = args
-        self.pub_flag  = pub_flag
-
-    def arg_parse(self,args_list:list[list]) -> list[Arg]:
-        """
-        # arg_parse
-        [[<word>,":",<word>],[<word>,":",<word>]]
-        このような形のリスト
-        """
-        rlist:list = list()
-        for i in args_list:
-            flag:bool = False
-            name = None
-            type_ = None
-            for j in i:
-                if j == ":":
-                    flag = True
-                elif flag:
-                    # type
-                    type_ = j.get_contents()
-                else:
-                    # name
-                    name = j.get_contents()
-            rlist.append(Arg(name, type_, self.depth))
-        return rlist
-
-    def wat_format_gen(self) -> str:
-        """
-# wat_format_gen
-
-## DecFunc
-        ```wat
-(func $name
-(param $b i32);;引数
-(param $a i32)
-(result i32)
-;;処理
-)
-        ```
-        """
-        wasm_code = ""
-        funcname:str = self.name
-        args:list[Arg] = self.arg_parse(self.args)
-        r_type = self.return_type
-        wasm_code += "(func ${}\n".format(funcname) # open func    
-        for i in args:
-            wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
-        if r_type: # TODO: 自作の型などについての設定
-            if r_type[0].get_contents() == "void":
-                pass
-            else:
-                wasm_code += "(result {})\n".format(r_type[0].get_contents())
-        else:
-            raise BaseException("返り値が設定されていません")
-        for i in self.get_all_local_value():
-            type_ = i.get_type()
-            # TODO: default is i32 あとで型の推論をできるように実装
-            # TODO: 様々な型に対応させる
-            # print("local","$"+i.get_name(),type_[0].contents if type_ else "i32")
-            wasm_code += ' '.join(["(local","$"+i.get_name(),(type_[0].contents if type_ else "i32") + ")\n"])
-        # TODO : ここに処理を書く
-        if self.contents:
-            # self.contentsはBlock
-            wasm_code += self.contents.wat_format_gen()
-        else:
-            raise BaseException("Error!")
-        wasm_code += ")\n" # close func
-        return wasm_code
-
-    def resolve_self(self):
-        """
-        # resolve_self
-        # TODO argsのtypeの処理
-        """
-        parser = Parser(self.args, depth = self.depth + 1)
-        self.args = parser.resolve_func_arg()
-        self.contents.resolve_self()
-
-    def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} depth:({self.depth}) pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
-
-    def get_all_local_value(self) -> list:
-        """
-        # get_all_local_value
-        decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
-        decvalueのリスト
-        """
-        rlist:list = list()
-        # error check
-        if type(self.contents) is Block:
-            #print ("decfunc".center(50,'='))
-            pass
-        else:
-            print ("Error! : function contetns is not Block")
-        return self.contents.get_all_local_value()
-
-class DecValue(Elem):
-    """
-    変数の宣言
-    (pub) (const|let) <name>:<type> = <expr>;
-    ## returns
-    get_name() -> valuename (宣言した)変数の名前
-    get_content() -> 宣言の具体的な内容
-    関数の宣言は代入とセットの場合がある
-    """
-    def __init__(self,mutable:str, valuename: str, type_:str, contents:list, depth:int, pub_flag = False) -> None:
-        super().__init__(
-            valuename, # 宣言した変数(または定数)名
-            contents,   # 初期化式、Noneの場合もある
-            depth
-        )
-        self.mutable = mutable# const or let
-        self.type_ = type_ # 変数(または定数)の型
-        self.pub_flag = pub_flag # publicであるかどうか
-
-    def get_type(self):
-        return self.type_
-    
-    def resolve_self(self):
-        """
-        # resolve_self
-        初期化式がある場合それを解決します
-        """
-        if self.contents is not None:
-            expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
-            self.contents = expr_parser.resolve()
-        else:
-            pass
-
-    def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
-
-    def get_all_local_value(self):
-        rlist:list = list()
-        if self.contents is not None:
-            for i in self.contents:
-                local_value = i.get_all_local_value()
-                rlist += local_value
-        rlist += [copy.copy(self)]
-        return rlist
-
-    def wat_format_gen(self) -> str:
-        """
-        watに変換したら完全に変数宣言の部分と代入部分が分離するので
-        ここでは、代入の処理変換するだけでよい
-        TODO: いまはまだi32のみの対応で良い
-        ```wat
-        ;; 宣言済みの変数$aに10を代入する例
-        i32.const 10
-        local.set $a
-        ```
-        """
-        wasm_code = ""
-        if self.contents:
-            #
-            wasm_code += self.contents[0].wat_format_gen()
-            wasm_code += "local.set ${}\n".format(self.name)
-        else:
-            # 変数の宣言のみで、代入部分が存在しないばあいはpass
-            pass
-        return wasm_code
-
-class Expr(Elem): # Exprは一時的なものである
-    """
-    # Expr
-    式を一時的にまとめておく場所です
-    ## returns
-    get_contents() -> <expr>
-    """
-    def __init__(self, name: str, contents: list, depth:int) -> None:
-        super().__init__(name, contents, depth)
-
-    def resolve_self(self):
-        """
-        # resolve_self
-        """
-        expr_parser = Expr_parser(self.contents,depth = self.depth)
-        self.contents = expr_parser.resolve()
-
-    def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
-
-    def get_all_local_value(self):
-        rlist:list = list()
-        for i in self.contents:
-            local_value = i.get_all_local_value()
-            rlist += local_value
-        return rlist
-
-    def wat_format_gen(self) -> str:
-        wasm_code = ""
-        if self.contents:
-            wasm_code += self.contents[0].wat_format_gen()
-        else:
-            # self.contentsがからである場合
-            pass
-        return wasm_code
-
-class ControlStatement(Elem):
-    """
-    # ControlStatement
-    ## 制御文
-    制御文とは以下のようなものである
-    ```
-    return <expr> ;
-    break  <expr> ;
-    continue ;
-    assert <expr> ;
-    ```
-    <expr>はparserの段階ではoptionalである。
-
-    Lichenではif 文やfor loop while から抜ける際に
-    breakに式を渡すことで値を返却することができる    
-
-    # returns
-    get_name() -> <name> (name| return, break, continue, assert)
-    get_contents() -> <expr> 
-    """
-    def __init__(self, name: str, expr: str, depth:int) -> None:
-        super().__init__(name, expr, depth)
-
-    def wat_format_gen(self):
-        """
-        # wat_format_gen
-        ## 
-        場合によって大きく対応が変わるので注意
-        - ループ内にあるばあい
-        - else
-        - if elif else文にある場合
-        - else
-        """
-        wasm_code = ""
-        for i in self.contents:
-            wasm_code += i.wat_format_gen()
-        
-        #
-        if self.name == "return":
-            wasm_code += "return\n"
-        elif self.name == "break":
-            pass
-        elif self.name == "continue":
-            pass
-        elif self.name == "assert":
-            pass
-        else:
-            raise BaseException("Error!")
-        return wasm_code
-
-    def resolve_self(self):
-        expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
-        self.contents = expr_parser.resolve()
-    
-    def get_all_local_value(self):
-        rlist:list = list()
-        for i in self.contents:
-            local_value = i.get_all_local_value()
-            rlist += local_value
-        return rlist
-
-# === Parser ===
 
 
 class Expr_parser(Parser): # 式について解決します
@@ -1579,8 +637,8 @@ class Expr_parser(Parser): # 式について解決します
     # expressions resolver
     ## 式について解決します
     """
-    def __init__(self, code: str,depth = 0) -> None:
-        super().__init__(code)
+    def __init__(self, code: str, loopdepth = 0,depth = 0) -> None:
+        super().__init__(code,loopdepth=loopdepth)
         self.depth = depth
 
     def grouping_syntaxbox(self,vec:list) -> list:
@@ -1606,7 +664,7 @@ class Expr_parser(Parser): # 式について解決します
                 elif i.get_name() == "else":
                     if flag:
                         group.append(i)
-                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
+                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth,self.loopdepth))
                         group.clear()
                         name = None
                         flag = False
@@ -1617,7 +675,7 @@ class Expr_parser(Parser): # 式について解決します
             else:
                 if flag:
                     if group:
-                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
+                        rlist.append(SyntaxBox(name,copy.copy(group),self.depth,self.loopdepth))
                         group.clear()
                         name = None
                     else: # group is empty
@@ -1627,7 +685,7 @@ class Expr_parser(Parser): # 式について解決します
                     pass
                 rlist.append(i)
         if group:
-            rlist.append(SyntaxBox(name,copy.copy(group),self.depth))
+            rlist.append(SyntaxBox(name,copy.copy(group),self.depth,self.loopdepth))
         return rlist
 
     def code2vec(self,code:str) ->list:
@@ -1667,8 +725,8 @@ class State_parser(Parser): # 文について解決します
     TODO Parenblock内の引数宣言ex) (a:i32,b:i32)
     TODO 変数宣言時の明示的な型宣言 a:Vec<i32>
     """
-    def __init__(self, code: str, depth = 0) -> None:
-        super().__init__(code)
+    def __init__(self, code: str, loopdepth = 0, depth = 0) -> None:
+        super().__init__(code,loopdepth=loopdepth)
         self.depth = depth
 
     def code2vec(self, code: str) -> list:
@@ -1806,7 +864,7 @@ class State_parser(Parser): # 文について解決します
         """
         # __group_contents_decvalue
         """
-        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group),self.depth))
+        rlist.append(DecValue(mutable,value_name,copy.copy(rtype_group),copy.copy(contents_group),self.depth,self.loopdepth))
         rtype_group.clear()
         contents_group.clear()
         value_name = None
@@ -1830,7 +888,7 @@ class State_parser(Parser): # 文について解決します
                 name = i.get_contents() # name :example (return, break ,continue, assert)
                 flag = True
             elif type(i) is str and i == ';' and flag:
-                rlist.append(ControlStatement(name,copy.copy(expr_group),self.depth))
+                rlist.append(ControlStatement(name,copy.copy(expr_group),self.depth,self.loopdepth))
                 expr_group.clear()
                 flag = False
             elif flag:
@@ -1868,16 +926,16 @@ class State_parser(Parser): # 文について解決します
         for i in vec:
             if any(map(lambda a:type (i) is a,excludes)):
                 if group:
-                    rlist.append(Expr(None,copy.copy(group),self.depth))
+                    rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
                     group.clear()
                 rlist.append(i)
             elif type(i) is str and i == ";":
-                rlist.append(Expr(None,copy.copy(group),self.depth))
+                rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
                 group.clear()
             else:
                 group.append(i)
         if group:
-            rlist.append(Expr(None,copy.copy(group),self.depth))
+            rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
         return rlist
 
     def resolve(self):
@@ -1914,6 +972,1087 @@ class State_parser(Parser): # 文について解決します
         return wasm_code
 
 
+# typeの解析
+class Type_parser(Parser):
+    """
+    # Type_parser
+    型解析用
+    """
+    def __init__(self,code:str) -> None:
+        """
+        - lichenが基本で用意する型
+          - i32,i64,f32,f64 //プリミティブ型
+          - () // tupleタプル(格納可能な要素は限定される)
+            プリミティブ型だけしか入れられない
+          - Vec<T> //実体はタプル
+          - Mat<T> //実体はタプル
+          - List<T> //実体は先頭ポインター
+         
+        - 複数値の返却とともに複数値の同時代入も作成する
+          ```lc
+          let x,y : (i32,i32) = pair(); // pair():(i32,i32)
+          ```
+          的な文法
+         
+        - ベクトル、行列の演算
+          - Vec2 // 実体は(i32,i32)のタプル
+          - Vec3 // 実体は(i32,i32,i32)
+          - Vec4
+          - Vec5<i32>
+          - ...
+          - Mat2x2 // 実体は(T, T, T, T)
+          - Mat3x4 // 実体は(T, T, T, T, T, T, T, T, T, T, T, T)
+          - Mat4x...
+          a*b
+
+
+        """
+        self.code = code
+        self.primitive_types = [
+            "i32",
+            "i64",
+            "f32",
+            "f64",
+        ]
+        self.basic_types = [
+            "i32",
+            "i64",
+            "f32",
+            "f64"
+        ]
+        self.basic_types_vec = "Vec"   # vector
+        self.basic_types_mat = "Mat"   # matrix
+        self.basic_types_list = "List" # list
+        self.basic_types_tuple = ""    # tuple
+        self.open = "<"
+        self.close = ">"
+
+    def code2vec(self, code: str) -> list[str]:
+        """
+        # code2vec
+        type解析用
+        """
+        return super().code2vec(code)
+
+    def resolve(self):
+        pass
+
+
+# Base Elem
+class Elem:
+    """
+    字句解析用データ型
+    """
+    def __init__(self, name:str, contents:str,depth:int,loopdepth:int) -> None:
+        self.name = name
+        self.contents = contents
+        self.depth = depth
+        self.loopdepth = loopdepth
+
+    def get_contents(self):return self.contents
+
+    def get_name(self):return self.name
+
+    def wat_format_gen(self) -> str:
+        """
+        # wat_format_gen
+
+        """
+        return f"({type(self).__name__} 未実装)\n"
+
+    def resolve_self(self):
+        """
+        # resolve_self
+        それぞれのデータ型で再帰的に処理をする
+        """
+        print(f"resolve_self 未実装 {type(self).__name__}")
+
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) contents:({self.contents})>"
+
+    def show(self):
+        """
+        # show
+        TODO 
+        階層構造を見やすく表示します
+        """
+        return " "*self.depth + f"""<{type(self).__name__} name:({self.name})
+contents:({self.contents})>"""
+    
+    def get_all_local_value(self):
+        """
+        # get_all_local_value
+
+        関数内に存在するローカル変数宣言をすべて取得する
+        持たない場合は空リストを返却する
+        """
+        # print(f"{type(self).__name__} get_all_local_value 未実装")
+        return []
+
+## Elements
+### basic elements
+class Block(Elem):
+    """
+    処理集合を格納
+    <block> = {
+        <proc>
+    }
+    <proc> = <expr> ;...
+    # returns
+    get_contents -> <proc>
+    """
+    def __init__(self, name: str, contents: str, depth: int, loopdepth: int) -> None:super().__init__(name, contents, depth, loopdepth)
+
+    def resolve_self(self):
+        state_parser = State_parser(self.contents, depth = self.depth + 1)
+        self.contents = state_parser.resolve()
+
+    def get_all_local_value(self) -> list[Elem]:
+        rlist:list = list()
+        for i in self.contents:
+            # ローカル変数を含んだリスト
+            local_vlaue:list = i.get_all_local_value()
+            rlist += local_vlaue
+        return rlist
+
+    def wat_format_gen(self) -> str:
+        """
+        # wat_format_gen 
+        各々の要素に対してwatcodeを生成させる
+        """
+        wasm_code:str = str()
+        for i in self.contents:
+            wasm_code += i.wat_format_gen()
+        return wasm_code
+        # return "<処理>"
+
+class String(Elem):
+    """
+    文字列を格納
+    "<string>"
+    '<char>'
+    # returns
+    get_contents -> <string> or <char>
+    """
+    def __init__(self, name: str, contents: str, depth: int) -> None:
+        # これ以上深くなることがないのでloopdepthは必要ない
+        super().__init__(name, contents, depth,None)
+
+    def resolve_self(self):
+        """
+        Stringの場合は何もする必要がない
+        """
+        pass
+
+class ListBlock(Elem):
+    """
+    リストを格納
+    [<expr>,...]
+    # returns
+    get_contents -> [<expr>,...] # 式集合
+    """
+    def resolve_self_unit(self,expr):
+        expr_parser = Expr_parser(expr)
+        return expr_parser.resolve()
+
+    def resolve_self(self):
+        expr = self.get_contents()
+        parser = Parser(expr, depth = self.depth + 1)
+        self.contents = [self.resolve_self_unit(i) for i in parser.resolve()]
+
+    def __init__(self, name: str, contents: str, depth: int, loopdepth: int) -> None:
+        super().__init__(name, contents, depth, loopdepth)
+
+class ParenBlock(Elem):
+    """
+    式ブロック
+    または
+    関数の引数宣言部
+    (<expr>,...)
+    or
+    (<dec>,...)
+    <dec> = <word>:<type>
+    # returns
+    get_contents -> <expr>,... # 式集合 式の範囲で宣言集合になることはない
+    """
+    def __init__(self, name: str, contents: str, depth: int, loopdepth: int) -> None:
+        super().__init__(name, contents, depth, loopdepth)
+
+    def resolve_self(self):
+        expr = self.get_contents()
+        parser = Expr_parser(expr, depth = self.depth + 1)
+        self.contents = parser.resolve()
+
+    def wat_format_gen(self):
+        """
+# wat_format_gen
+このmethodが呼び出されるときselfは
+式の優先順位変更に使用するParenBlockであることに注意
+        """
+        return self.contents[0].wat_format_gen()
+
+class Word(Elem):# Word Elemは仮どめ
+    """
+    引数、変数、関数定義、制御文法の文字列
+    <word> = fn, let, const, if, while...(exclude: +, -, *, /)
+    <word> = <syntax>, <name>, <type>, <Number>
+    # returns
+    get_contents -> <word>
+    """
+    def __init__(self, name: str, contents: str, depth: int) -> None:
+        super().__init__(name, contents, depth, None)
+
+    def resolve_self(self):
+        """
+        Wordの場合は何もする必要がない
+        """
+        pass
+
+    def __self_is_i32(self) -> bool:
+        """
+# self_is_i32
+自分自身がi32であった場合、Trueを返却
+        """
+        for i in self.contents:
+            if '0' <= i <= '9':
+                pass
+            else:
+                return False
+        return True
+    
+    def wat_format_gen(self,minus=False):
+        """
+        # wat_format_gen
+        ## param
+        # ある数字が負の値であるとき、 
+        ## TODO:数字ではない場合
+        """
+        if self.__self_is_i32():
+            return "i32.const {}{}\n".format(
+                '-' if minus else '',
+                self.contents
+            )
+        else:
+            return "local.get ${}\n".format(self.contents)
+
+class Syntax(Elem):
+    """
+    # returns
+    <syntax> = if, elif, else, loop, for, while
+    get_name ->  if, elif, else, loop, for, while
+    get_expr -> <expr>
+    get_contents -> {<proc>}
+    """ 
+    def __init__(self, name: str, expr, contents, depth: int, loopdepth: int) -> None:
+        super().__init__(name, contents, depth, loopdepth)
+        self.expr = expr
+
+    def get_expr(self):
+        return self.expr
+
+    def resolve_self(self,isloop = False):
+        """
+        # resolve_self
+        ## if while for loop などを解決する
+        """
+        loopdepth: int = self.loopdepth + 1 if isloop else self.loopdepth
+        state_parser = State_parser(self.contents, depth = self.depth + 1, loopdepth = loopdepth)
+        self.contents = state_parser.resolve()
+        if self.expr is not None:
+            expr_parser = Expr_parser(self.expr, depth = self.depth + 1, loopdepth = loopdepth)
+            self.expr = expr_parser.resolve()
+        else:
+            pass
+
+    def __repr__(self):
+        # override
+        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
+
+    def __proc_if(self,return_type = "None") -> str: # 工事中:TODO
+        """
+        # __proc_if 
+        headがifだった時の処理
+        return_type "None"|"return"|""|
+        """
+        wasm_code:str = ""
+        if self.name == "if":
+            if self.expr: # <式>
+                wasm_code += self.expr[0].wat_format_gen()
+            else:
+                # ifに条件式が与えられていない場合
+                raise BaseException("Error! if節の条件を書いてください")
+            if return_type == "None": #                         TODO : 型推論の実装をしたときに変更する
+                wasm_code += "if\n"
+            else:
+                wasm_code += "if (result i32)\n"
+            if self.contents: # ブロック内の処理
+                wasm_code += self.contents[0].wat_format_gen()
+            else:
+                raise BaseException("Error!")
+        elif self.name == "elif":
+            """
+            # elif
+            ```wat
+            else
+            ;; <式>
+            if
+            ;; <処理>
+            ```
+            """
+            wasm_code += "else\n"
+            if self.expr:# <式>
+                wasm_code += self.expr[0].wat_format_gen()
+            else: # ifに条件式が与えられていない場合
+                raise BaseException("Error!")
+            if return_type == "None": #                         TODO : 型推論の実装をしたときに変更する
+                wasm_code += "if\n"
+            else:
+                wasm_code += "if (result i32)\n"
+            if self.contents: # ブロック内の処理
+                wasm_code += self.contents[0].wat_format_gen()
+            else:
+                raise BaseException("Error!")
+        elif self.name == "else":
+            if self.expr:
+                # ここには式は存在しないはず
+                raise BaseException("Error!")
+            wasm_code += "else\n"
+            if self.contents: # ブロック内の処理
+                wasm_code += self.contents[0].wat_format_gen()
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
+    def __proc_loop(self) -> str: # 工事中:TODO
+        wasm_code = ""
+        if self.name == "loop":
+            pass#TODO
+        elif self.name == "else":
+            pass#TODO
+        else:
+            raise BaseException("Error!")
+        wasm_code += "未実装\n"
+        return wasm_code
+
+    def __proc_while(self) -> str: # 工事中:TODO
+        """
+        ```wasm
+        (loop ;; 0
+            (block ;;1
+                ;;while (i < 10)
+                local.get $i
+                i32.const 10
+                i32.lt_u
+                if
+                nop
+                else
+                br 1 ;;end of loop
+                end
+                ;; ここに処理を書く
+                local.get $i
+                call $log
+                ;; i += 1
+                local.get $i
+                i32.const 1
+                i32.add
+                local.set $i
+                br 0
+            )
+        )  
+        ```
+        """
+        wasm_code = ""
+        if self.name == "while":
+            wasm_code += "(loop $#loop{}\n"  .format(self.loopdepth)
+            wasm_code += "(block $#block{}\n".format(self.loopdepth)
+            if self.get_expr():
+                wasm_code += self.expr[0].wat_format_gen()
+                wasm_code += "if\n"
+                wasm_code += "nop\n"
+                wasm_code += "else\n"
+                wasm_code += "br $#block{} \n".format(self.loopdepth) # TODO
+                wasm_code += "end\n"
+            else:
+                raise BaseException("Error! while節を書いてください")
+            # 処理
+            for i in self.contents:
+                wasm_code += i.wat_format_gen()
+            wasm_code += "br $#loop{} \n".format(self.loopdepth) # TODO
+            wasm_code += ")"
+            wasm_code += ")"
+        elif self.name == "else":
+            pass#TODO
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
+    def __proc_for(self) -> str: # 工事中:TODO
+        wasm_code = ""
+        if self.name == "for":
+            pass#TODO
+        elif self.name == "else":
+            pass#TODO
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
+    def wat_format_gen(self,syntax_head:str,return_type = "None") -> str:
+        """
+        # wat_format_gen 
+        TODO:これは、非効率的な実装、あとで書き直す
+        ## pattern
+        - if 
+          - if
+          - elif
+          - else
+        - loop
+          - loop
+          - else
+        - while
+          - while
+          - else
+        - for
+          - for
+          - else
+        """
+        wasm_code:str = ""
+        if syntax_head == "if":
+            # wasmとlichenのロジックに従って適切な変換を行う
+            wasm_code += self.__proc_if(return_type=return_type)
+        elif syntax_head == "loop":
+            wasm_code += self.__proc_loop()
+        elif syntax_head == "while":
+            wasm_code += self.__proc_while()
+        elif syntax_head == "for":
+            wasm_code += self.__proc_for()
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
+class SyntaxBox(Elem):
+    """
+    # SyntaxBox
+    if elif else,loop else,while elseなどの連続して解釈されるコードを集めます
+    
+    """
+    def __init__(self, name: str, contents: list[Syntax], depth:int ,loopdepth: int) -> None:
+        super().__init__(name, contents, depth, loopdepth)
+
+    def resolve_self(self):
+        """
+        listの各要素は、すべてSyntaxになっているはずなので、
+        それぞれのsyntax要素のresolve_self methodを呼び出せば良い
+        ここではparserを呼び出さないのでdepthを深くしない
+        """
+        for i in self.contents:
+            if self.name in ["while","for","loop"]:
+                i.resolve_self(isloop = True)
+            else:
+                i.resolve_self()
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
+
+    def __count_name(self,name:str) -> int:
+        """
+        # __count 
+        contentsボックス内の特定のsyntaxを数えます
+        """
+        counter:int = 0
+        for i in self.contents:
+            if i.name == name:
+                counter += 1
+        return counter
+
+    def __include_return_in_contents(self, elements:list) -> bool:
+        """
+        # __include_return
+        """
+        for i in elements:
+            if type(i) is ControlStatement and i.get_name() == "return":
+                return True
+        return False
+
+    def __if_has_else(self, elements:list) -> bool:
+        return any(
+            map(
+                lambda a:a.name == "else",
+                elements
+                )
+            )
+
+    def __if_unreachable_checker(self) -> bool:
+        """
+        # __if_unreachable_checker
+        ifに到達する可能性があるのかないのかをcheckするメソッド
+        if ステートメントないのすべてのブロックがreturn を含んでいるかどうかをcheckする
+        """
+        # for i in self.contents:
+        #     print(":::",i.contents)
+        #     print(self.__include_return_in_contents(i.contents))
+        return all(
+            map(
+                lambda i:
+                    self.__include_return_in_contents(i.contents),
+                self.contents
+                )
+            )
+
+    def wat_format_gen(self) -> str:
+        """
+        # wat_format_gen 
+        制御文や、制御式をwasmにして返す
+        - if
+        - loop
+        - for
+        - while
+        # TODO:if文の実装
+        """
+        wasm_code = ""
+        if self.name == "if":
+            # ifが続く場合
+            # if 返り値用変数
+            # 
+            all_if_block_has_return = self.__if_unreachable_checker() and self.__if_has_else(self.contents)
+            for i in self.contents:                 # contents内の要素はすべて、syntax
+                if all_if_block_has_return:
+                    print(i)
+                    wasm_code += i.wat_format_gen("if",return_type = "None") # if elif else
+                else:
+                    wasm_code += i.wat_format_gen("if",return_type = "i32")
+            wasm_code += "end\n"*self.__count_name("elif")            # elif end 開いたelif分だけendで閉じる必要がある
+            wasm_code += "end\n"                                      # if ... end このendはifをセットである
+            if all_if_block_has_return:
+                # すべてのブロックがreturnをした場合end後には到達不可能ため
+                wasm_code += "unreachable\n"
+        elif self.name == "loop":
+            pass # TODO
+        elif self.name == "while":
+            for i in self.contents:
+                wasm_code += i.wat_format_gen("while")
+        elif self.name == "for":
+            pass # TODO
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
+class Func(Elem):
+    """
+    # TODO:resolve args
+    srgs:[<expr>,...]のような形を期待する
+    <name(excludes: 0-9)>(<expr>,...)
+    # returns
+    get_contents -> (args:[<expr>,...])
+    get_name -> (funcname: <name>)
+    """
+    def __init__(self, name: str, contents: list, depth:int,loopdepth: int) -> None:
+        super().__init__(name, contents, depth, loopdepth)
+        # TODO : 引数の型チェックを入れる
+        self.wasm_ope_correspondence_table = {
+            # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
+            "+":"i32.add", # add
+            "-":"i32.sub", # sub 
+            "*":"i32.mul", # mul
+            "/":"i32.div_u",# div
+            "%":"i32.rem_u", # mod 
+
+            "==":"i32.eq",# Equal => TODO : i32.eqz
+            "!=":"i32.ne",# Not equal 
+            # lt_u lt_sはsigned unsignedの違い気をつける
+            "<":"i32.lt_s",# Less than
+            ">":"i32.gt_s", # greater than
+            "<=":"i32.le_s", # Less or equal
+            ">=":"i32.ge_s", # greater or equal
+
+            "&&":"i32.and", # and
+            "||":"i32.or", # or
+
+            "=":"local.set"
+        }
+        self.wasm_special_ope_correspondence_table:list = {
+            "+=":"i32.add",
+            "-=":"i32.sub",
+            "*=":"i32.mul",
+            "/=":"i32.div_u",
+            "%=":"i32.rem_u",
+        }
+    
+    def wat_format_gen(self) -> str:
+        """
+        # Func.wat_format_gen
+        
+        ## TODO:否定!などのprefixについての処理
+
+        """
+        wasm_code = ""
+        call_name:str = None
+        if type(self.name) is Operator:
+            if self.name.get_contents() == '=':
+                # "=", "+="などの特殊な場合 
+                if len(self.contents) == 2:
+                    for i in self.contents[1:]:# 0番目を飛ばす
+                        if len(i) == 0:        # TODO
+                            pass
+                        else:
+                            wasm_code += i[0].wat_format_gen()
+                    # 以下の一行で`self.contents[0][0]`は必ずWordオブジェクトにならなければいけない
+                    wasm_code += "local.set ${}\n".format(self.contents[0][0].get_contents())
+                else:
+                    # error
+                    # a = b
+                    # かならず引数は2つになるはずなのでそれ以外の場合はError!
+                    raise BaseException("Error!")
+            elif self.name.get_contents() in self.wasm_special_ope_correspondence_table:
+                # `+=`や`-=`のとき
+                # 演算子は両脇に2つの引数を取る
+                wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
+                # print("-"*50,self.contents[1][0])
+                wasm_code += self.contents[1][0].wat_format_gen()
+                wasm_code += "local.set ${}\n".format(self.contents[0][0].contents)
+            elif self.name.get_contents() in self.wasm_ope_correspondence_table:
+                # 普通の演算子(代入やincrではない)場合
+                #
+                # 特別な演算子、incr decrの場合は別の処理をする
+                if len(self.contents) == 2:
+                    call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
+                    if self.contents[0]:
+                        # 通常と同じ
+                        wasm_code += self.contents[0][0].wat_format_gen() # 左側
+                        wasm_code += self.contents[1][0].wat_format_gen() # 右側
+                        wasm_code += call_name + '\n'
+                    else: # self.contents[0]が空の配列だった場合
+                        # -10のような書き方をしている場合
+                        # 以下のように変換したい
+                        # const.i32 -10
+                        if self.name.get_contents() == "+":
+                            wasm_code += self.contents[1][0].wat_format_gen(minus = False)
+                        elif self.name.get_contents() == "-":
+                            # 例.
+                            # const.i32 -10
+                            # self.contents[1][0] # これは絶対にWordオブジェクトになる
+                            wasm_code += self.contents[1][0].wat_format_gen(minus = True)
+                        else: # 例えば"/10"みたいな書き方がエラー
+                            raise BaseException("Error!:invalid syntax")
+                else:
+                    # 二項演算の引数が2つ以上またはそれ以下
+                    raise BaseException("Error!")
+                # call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
+                # print(self.contents)
+                # for i in self.contents: # per arg
+                #     if len(i) == 0:        # TODO
+                #         pass
+                #     else:
+                #         wasm_code += i[0].wat_format_gen()
+                # wasm_code += call_name + '\n'
+            else:
+                call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
+                print(self.contents)
+                for i in self.contents: # per arg
+                    if len(i) == 0:        # TODO
+                        pass
+                    else:
+                        wasm_code += i[0].wat_format_gen()
+                wasm_code += call_name + '\n'
+        elif type(self.name) is str:
+            for i in self.contents: # per arg
+                if len(i) == 0:        # TODO
+                    pass
+                else:
+                    wasm_code += i[0].wat_format_gen()
+            wasm_code += "call ${}\n".format(self.name)
+        else:
+            pass
+        return wasm_code
+
+    def resolve_self_unit(self,expr:list):
+        parser = Expr_parser(expr, depth = self.depth + 1)
+        return parser.resolve()
+
+    def resolve_self(self):
+        # args = self.get_contents()
+        # self.contents = [self.resolve_self_unit(i) for i in args]
+        if type(self.get_name()) is Operator:
+            args = self.get_contents()
+            self.contents = [self.resolve_self_unit(i) for i in args]
+        else:
+            expr_parser = Parser(self.contents, depth = self.depth + 1)
+            self.contents = expr_parser.resolve()
+            self.contents = [Expr_parser(i,depth=self.depth+1).resolve() for i in self.contents]
+
+    # def __repr__(self):
+    #     return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
+
+class List(Elem):
+    """
+    # List 
+    ## index呼び出しは少し複雑である
+    
+    返り値があるようなElemについてすべてindexを指定することは可能である
+    <List>:
+        <name>[<expr>]                     ex) arr[0]
+        <Func>[<expr>]                     ex) arr_gen()[0]
+        (ListData:[<expr>,...])[<expr>]    ex) [0,1,2][a]
+        <syntax> [<expr>]                  ex) if (a){[0,1]}else{[1,0]}[a]
+    多次元配列の場合
+        <List>[<expr>]                     ex) arr[0][0][0]
+
+    # returns
+    get_contents -> (index:[<expr,...>])
+    get_name -> (listname:<name>)
+    """
+    def __init__(self, expr: str, index: list[ListBlock],depth:int, loopdepth: int) -> None:
+        super().__init__(None, None, depth, loopdepth)
+        self.expr = expr
+        self.index_list = index
+
+    def resolve_self_unit(self,expr):
+        expr_parser = Expr_parser(expr, depth = self.depth + 1)
+        return expr_parser.resolve()
+
+    def resolve_self(self):
+        """
+        # resolve_self 
+        ## 処理前
+        ```
+        index_list = [<ListBlock>,...]
+        ```
+        ## 処理後
+        ```
+        index_list = [<expr>,<expr>]
+        ```
+        """
+        self.index_list = [self.resolve_self_unit(i.get_contents()) for i in self.index_list]
+
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.expr}) index:({self.index_list})>"
+
+class Operator(Elem):
+    """
+    # returns
+    get_contents -> ope(ope:["+","-","*","/",...])
+    """
+
+    def __init__(self, ope:str, depth:int) -> None:
+        super().__init__(None, ope, depth, None)
+        self.ope = ope
+
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) ope:({self.ope})>"
+
+class Data(Elem):
+    """
+    # Data
+    カンマ区切りのデータに対して処理を行います。
+    """
+    def __init__(self,data:list, depth:int) -> None:
+        super().__init__(None, None, depth, None)
+        self.data:list = data
+
+    def get_data(self):
+        return self.data
+
+    def __repr__(self):
+        text:str = ""
+        for i in self.data:text += repr(i) + ",\n"
+        return f"<{type(self).__name__} depth:({self.depth}) data:({text})>"
+
+class Arg(Elem):
+    """
+    # ArgParse
+    ## 引数エレメント
+    """
+    def __init__(self, name: str, type_: str, depth:int) -> None:
+        super().__init__(name, type_, depth ,None)
+
+### function declaration
+class DecFunc(Elem):
+    """
+    関数の宣言部分
+    (pub) fn <name><parenblock>:<type> <block>
+    args
+    TODO:decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
+    """
+    def __init__(self, funcname:str,args:list,return_type, contents: Block,pub_flag:bool, depth:int) -> None:
+        super().__init__(funcname, contents, depth, 0)
+        self.return_type = return_type
+        self.args = args
+        self.pub_flag  = pub_flag
+
+    def arg_parse(self,args_list:list[list]) -> list[Arg]:
+        """
+        # arg_parse
+        [[<word>,":",<word>],[<word>,":",<word>]]
+        このような形のリスト
+        """
+        rlist:list = list()
+        for i in args_list:
+            flag:bool = False
+            name = None
+            type_ = None
+            for j in i:
+                if j == ":":
+                    flag = True
+                elif flag:
+                    # type
+                    type_ = j.get_contents()
+                else:
+                    # name
+                    name = j.get_contents()
+            rlist.append(Arg(name, type_, self.depth))
+        return rlist
+
+    def wat_format_gen(self) -> str:
+        """
+# wat_format_gen
+
+## DecFunc
+        ```wat
+(func $name
+(param $b i32);;引数
+(param $a i32)
+(result i32)
+;;処理
+)
+        ```
+        """
+        wasm_code = ""
+        funcname:str = self.name
+        args:list[Arg] = self.arg_parse(self.args)
+        r_type = self.return_type
+        wasm_code += "(func ${}\n".format(funcname) # open func    
+        for i in args:
+            wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
+        if r_type:                                                           # TODO: 自作の型などについての設定
+            if r_type[0].get_contents() == "void":
+                pass
+            else:  #TODO: 仮
+                print(r_type[0].get_contents())
+                if type(r_type[0].get_contents()) is list:
+                    wasm_code += "(result {})\n".format(" ".join(r_type[0].get_contents()))
+                else:
+                    wasm_code += "(result {})\n".format(r_type[0].get_contents())
+        else:
+            raise BaseException("返り値が設定されていません")
+        for i in self.get_all_local_value():
+            type_ = i.get_type()
+            # TODO: default is i32 あとで型の推論をできるように実装
+            # TODO: 様々な型に対応させる
+            # print("local","$"+i.get_name(),type_[0].contents if type_ else "i32")
+            wasm_code += ' '.join(["(local","$"+i.get_name(),(type_[0].contents if type_ else "i32") + ")\n"])
+        # TODO : ここに処理を書く
+        if self.contents:
+            # self.contentsはBlock
+            wasm_code += self.contents.wat_format_gen()
+        else:
+            raise BaseException("Error!")
+        wasm_code += ")\n" # close func
+        return wasm_code
+
+    def resolve_self(self):
+        """
+        # resolve_self
+        # TODO argsのtypeの処理
+        """
+        parser = Parser(self.args, depth = self.depth + 1)
+        self.args = parser.resolve_func_arg()
+        print("dec funv",self.args)
+        self.contents.resolve_self()
+
+    def __repr__(self): # public 関数のときの表示
+        return f"<{type(self).__name__} depth:({self.depth}) pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+
+    def get_all_local_value(self) -> list:
+        """
+        # get_all_local_value
+        decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
+        decvalueのリスト
+        """
+        rlist:list = list()
+        # error check
+        if type(self.contents) is Block:
+            #print ("decfunc".center(50,'='))
+            pass
+        else:
+            print ("Error! : function contetns is not Block")
+        return self.contents.get_all_local_value()
+
+class DecValue(Elem):
+    """
+    変数の宣言
+    (pub) (const|let) <name>:<type> = <expr>;
+    ## returns
+    get_name() -> valuename (宣言した)変数の名前
+    get_content() -> 宣言の具体的な内容
+    関数の宣言は代入とセットの場合がある
+    """
+    def __init__(self,mutable:str, valuename: str, type_:str, contents:list, depth:int, loopdepth: int, pub_flag = False) -> None:
+        super().__init__(
+            valuename, # 宣言した変数(または定数)名
+            contents,   # 初期化式、Noneの場合もある
+            depth,
+            loopdepth
+        )
+        self.mutable = mutable# const or let
+        self.type_ = type_ # 変数(または定数)の型
+        self.pub_flag = pub_flag # publicであるかどうか
+
+    def get_type(self):
+        return self.type_
+    
+    def resolve_self(self):
+        """
+        # resolve_self
+        初期化式がある場合それを解決します
+        """
+        if self.contents is not None:
+            expr_parser = Expr_parser(self.contents, depth = self.depth + 1)
+            self.contents = expr_parser.resolve()
+        else:
+            pass
+
+    def __repr__(self): # public 関数のときの表示
+        return f"<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        if self.contents is not None:
+            for i in self.contents:
+                local_value = i.get_all_local_value()
+                rlist += local_value
+        rlist += [copy.copy(self)]
+        return rlist
+
+    def wat_format_gen(self) -> str:
+        """
+        watに変換したら完全に変数宣言の部分と代入部分が分離するので
+        ここでは、代入の処理変換するだけでよい
+        TODO: いまはまだi32のみの対応で良い
+        ```wat
+        ;; 宣言済みの変数$aに10を代入する例
+        i32.const 10
+        local.set $a
+        ```
+        """
+        wasm_code = ""
+        if self.contents:
+            #
+            wasm_code += self.contents[0].wat_format_gen()
+            wasm_code += "local.set ${}\n".format(self.name)
+        else:
+            # 変数の宣言のみで、代入部分が存在しないばあいはpass
+            pass
+        return wasm_code
+
+class Expr(Elem): # Exprは一時的なものである
+    """
+    # Expr
+    式を一時的にまとめておく場所です
+    ## returns
+    get_contents() -> <expr>
+    """
+    def __init__(self, name: str, contents: list, depth:int, loopdepth: int) -> None:
+        super().__init__(name, contents, depth, loopdepth)
+
+    def resolve_self(self):
+        """
+        # resolve_self
+        """
+        expr_parser = Expr_parser(self.contents,depth = self.depth)
+        self.contents = expr_parser.resolve()
+
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
+
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i.get_all_local_value()
+            rlist += local_value
+        return rlist
+
+    def wat_format_gen(self) -> str:
+        wasm_code = ""
+        if self.contents:
+            wasm_code += self.contents[0].wat_format_gen()
+        else:
+            # self.contentsがからである場合
+            pass
+        return wasm_code
+
+class ControlStatement(Elem):
+    """
+    # ControlStatement
+    ## 制御文
+    制御文とは以下のようなものである
+    ```
+    return <expr> ;
+    break  <expr> ;
+    continue ;
+    assert <expr> ;
+    ```
+    <expr>はparserの段階ではoptionalである。
+
+    Lichenではif 文やfor loop while から抜ける際に
+    breakに式を渡すことで値を返却することができる    
+
+    # returns
+    get_name() -> <name> (name| return, break, continue, assert)
+    get_contents() -> <expr> 
+    """
+    def __init__(self, name: str, expr: str, depth:int, loopdepth: int) -> None:
+        super().__init__(name, expr, depth, loopdepth)
+
+    def wat_format_gen(self):
+        """
+        # wat_format_gen
+        ## 
+        場合によって大きく対応が変わるので注意
+        - ループ内にあるばあい
+        - else
+        - if elif else文にある場合
+        - else
+        """
+        wasm_code = ""
+        for i in self.contents:
+            wasm_code += i[0].wat_format_gen()
+        
+        #
+        if self.name == "return":
+            wasm_code += "return\n"
+        elif self.name == "break":
+            pass
+        elif self.name == "continue":
+            pass
+        elif self.name == "assert":
+            pass
+        else:
+            raise BaseException("Error!")
+        return wasm_code
+
+    def resolve_self(self):
+        expr_parser = Parser(self.contents, depth = self.depth + 1)
+        self.contents = expr_parser.resolve()
+        self.contents = [Expr_parser(i,depth=self.depth+1).resolve() for i in self.contents]
+    
+    def get_all_local_value(self):
+        rlist:list = list()
+        for i in self.contents:
+            local_value = i[0].get_all_local_value()
+            rlist += local_value
+        return rlist
+
+
 # Type_Elem
 class Type_Elem(Elem):
     """
@@ -1942,24 +2081,4 @@ class Type_f64(Type_Elem):
 class Type_char(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
-
-
-# typeの解析
-class Type_parser(Parser):
-    """
-    # Type_parser
-    型解析用
-    """
-    def __init__(self,code:str) -> None:
-        self.code = code
-    
-    def code2vec(self, code: str) -> list[str]:
-        """
-        # code2vec
-        type解析用
-        """
-        return super().code2vec(code)
-
-    def resolve(self):
-        pass
 

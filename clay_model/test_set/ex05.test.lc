@@ -1,0 +1,38 @@
+
+fn add(a:i32,b:i32):i32{
+    return a + b;
+}
+
+fn stairs(a:i32):(i32,i32){
+    if (10 < a){
+        return 2, 11 + 1;
+    }elif (0 < a && a<=10){
+        return 1, 1;
+    }else{
+        return 0, 1;
+    };
+}
+
+fn stairs2(a:i32):(i32,i32){
+    let b = 10;
+    let c = 0;
+    if (10 < a){
+        return b, c + 1;
+    }elif (0 < a && a<=10){
+        return c, b + 1;
+    }else{
+        return 0, 1;
+    };
+}
+
+fn stairs3(a:i32):Vec<i32>{
+    let b = 10;
+    let c = 0;
+    if (10 < a){
+        return b, c + 1;
+    }elif (0 < a && a<=10){
+        return c, b + 1;
+    }else{
+        return 0, 1;
+    };
+}

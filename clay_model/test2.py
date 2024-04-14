@@ -49,16 +49,52 @@ def test00():
         "test_set/ex00.test.lc",
         "test_set/ex01.test.lc",
         "test_set/ex02.test.lc",
+        "test_set/ex06.test.lc",
+        "test_set/ex07.test.lc",
     ]
     tester = LichenTester(paths)
     print("test start".center(100,"="))
     tester.test_all()
+
+def test01():
+    # paths = glob.glob("./test_set/*test.lc")
+    paths = [
+        "test_set/ex05.test.lc",
+    ]
+    # tester = LichenTester(paths)
+    # print("test start".center(100,"="))
+    # tester.test_all()
+    with open("test_set/ex06.test.lc",mode="r",encoding="utf-8") as f:
+        p = lichen.State_parser(f.read())
+        codelist = p.resolve()
+        for i in codelist:
+            print()
+            print(i)
+        print("codelist","ok")
+        print(
+            p.toplevel_resolve()
+        )
+
+def test02():
+    code="""
+        tarai(tarai(x - 1, y, z), tarai(y - 1, z, x), tarai(z - 1, x, y));
+    """
+    code2="""
+func0(a,b),func1(b,a),func2(aaa)
+"""
+    p = lichen.State_parser(code2)
+    codelist = p.resolve()
+    print(codelist)
 
 
 if __name__=="__main__":
     args = sys.argv
     if args[1] == "0":
         test00()
+    elif args[1] == "1":
+        test01()
+    elif args[1] == "2":
+        test02()
     else:
         print("else")
 

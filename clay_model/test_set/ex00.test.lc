@@ -14,3 +14,11 @@ pub fn main (a:i32,b:i32):void{
     d = d + 42;
     return d;
 }
+
+pub fn up(a:i32,b:i32):(i32,i32){
+    if (a <= b){
+        return a,b;
+    }else{
+        return b,a;
+    }
+}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script type="text/javascript">
+        function consoleLogString(offset, length) {
+            const bytes = new Uint8Array(memory.buffer, offset, length);
+            const string = new TextDecoder("utf8").decode(bytes);
+            console.log(string);
+        }
+        const memory = new WebAssembly.Memory({ initial: 1 });
+        const importObject = {
+            console: {
+                print: consoleLogString ,
+                log:(a)=>{console.log(a)}
+            },
+            js: {
+                mem: memory,
+            },
+        };
+        fetch("ex06.wasm")
+        .then(res => res.arrayBuffer())
+        .then(buffer => WebAssembly.instantiate(buffer,importObject))
+        .then(({module, instance}) => {
+          console.log(memory.buffer.byteLength);
+          const array = new Uint32Array(memory.buffer);
+          console.log(instance.exports.main(0));
+          console.log(instance.exports.main(4));
+          console.log(instance.exports.main(8));
+          console.log(array);
+        });
+    </script>
+</body>
+</html>

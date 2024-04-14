@@ -8,8 +8,26 @@
 <body>
     <h1>wasm 制御文 loopの再現</h1>
     <script type="text/javascript">
-        const url = 'ex03.wasm';
-        WebAssembly.instantiateStreaming(fetch(url), { console });
+        // const url = 'ex03.wasm';
+        // WebAssembly.instantiateStreaming(fetch(url), { console });
+
+        const url = 'ex03_1.wasm';
+        WebAssembly.instantiateStreaming(
+            fetch(url),
+            {
+                console:
+                {
+                    logI32I32:(a,b)=>{console.log(a,b)},
+                    logI32:(a)=>{console.log(a)}
+                }
+            }
+        ).then((obj) => {
+            console.log("main output");
+            obj.instance.exports.main();
+            console.log("main2 output");
+            obj.instance.exports.main2();
+            console.log("done");
+        });
     </script>
 </body>
 </html>
