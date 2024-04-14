@@ -3,9 +3,23 @@ pub fn main():void{
     let i = 0;
     while (i < 10){
         let j = 0;
-        while (j < 0){
-            j += 1;
+        while (j < 10){
+            logI32I32(i,j);
+            j = j + 1;
         };
-        i += 1;
+        i = i + 1;
+    };
+}
+
+pub fn main2():void{
+    let i = 0;
+    while (i < 10){
+        logI32(i);
+        i = i + 1;
+    };
+    i = 0;
+    while (i < 10){
+        logI32(i);
+        i = i + 1;
     };
 }

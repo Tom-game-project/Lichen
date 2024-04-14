@@ -1370,21 +1370,21 @@ class Syntax(Elem):
         """
         wasm_code = ""
         if self.name == "while":
-            wasm_code += "(loop \n"
-            wasm_code += "(block \n"
+            wasm_code += "(loop $#loop{}\n"  .format(self.loopdepth)
+            wasm_code += "(block $#block{}\n".format(self.loopdepth)
             if self.get_expr():
                 wasm_code += self.expr[0].wat_format_gen()
                 wasm_code += "if\n"
                 wasm_code += "nop\n"
                 wasm_code += "else\n"
-                wasm_code += "br {} \n".format(self.loopdepth * 2 + 1) # TODO
+                wasm_code += "br $#block{} \n".format(self.loopdepth) # TODO
                 wasm_code += "end\n"
             else:
                 raise BaseException("Error! while節を書いてください")
             # 処理
             for i in self.contents:
                 wasm_code += i.wat_format_gen()
-            wasm_code += "br {} \n".format(self.loopdepth * 2) # TODO
+            wasm_code += "br $#loop{} \n".format(self.loopdepth) # TODO
             wasm_code += ")"
             wasm_code += ")"
         elif self.name == "else":

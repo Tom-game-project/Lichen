@@ -48,7 +48,7 @@
                 )
             }
         }
-const importObject = {
+        const importObject = {
             console: { print3: (a,b,c)=>{console.log(a,b,c)} },
         };
         WebAssembly.instantiateStreaming(fetch("ex00.wasm"),importObject).then((obj) => {
