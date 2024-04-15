@@ -11,11 +11,9 @@ local.set $i
 local.get $i
 i32.const 10
 i32.lt_s
-if
-nop
-else
-br $#block0 
-end
+i32.const 1
+i32.xor
+br_if $#block0
 i32.const 0
 local.set $j
 (loop $#loop1
@@ -23,11 +21,9 @@ local.set $j
 local.get $j
 i32.const 10
 i32.lt_s
-if
-nop
-else
-br $#block1 
-end
+i32.const 1
+i32.xor
+br_if $#block1
 local.get $i
 local.get $j
 call $logI32I32
@@ -51,11 +47,9 @@ local.set $i
 local.get $i
 i32.const 10
 i32.lt_s
-if
-nop
-else
-br $#block0 
-end
+i32.const 1
+i32.xor
+br_if $#block0
 local.get $i
 call $logI32
 local.get $i
@@ -70,11 +64,9 @@ local.set $i
 local.get $i
 i32.const 10
 i32.lt_s
-if
-nop
-else
-br $#block0 
-end
+i32.const 1
+i32.xor
+br_if $#block0
 local.get $i
 call $logI32
 local.get $i
