@@ -86,6 +86,28 @@ func0(a,b),func1(b,a),func2(aaa)
     codelist = p.resolve()
     print(codelist)
 
+def test03(): # TODO 後でテスト
+    """
+    # test03 
+    否定反転メソッドのテスト
+
+    """
+    code0 = """
+!a
+"""
+    code1 = """
+!(a && b)
+"""
+    code2 = """
+a && b
+"""
+    p = lichen.Expr_parser(code2)
+    codelist = p.resolve()
+    print("input",code1)
+    print(codelist)
+    codelist[0].negative_inversion()
+    print(codelist)
+
 
 if __name__=="__main__":
     args = sys.argv
@@ -95,6 +117,8 @@ if __name__=="__main__":
         test01()
     elif args[1] == "2":
         test02()
+    elif args[1] == "3":
+        test03()
     else:
         print("else")
 

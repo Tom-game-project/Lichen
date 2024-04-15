@@ -614,7 +614,7 @@ class Parser:
         else:
             return vec
 
-    def resolve(self):
+    def resolve(self) -> list["Elem"]:
         return self.code2vec(self.code)
 
     def __resolve_func_arg_unit(self,code:list):
@@ -709,7 +709,7 @@ class Expr_parser(Parser): # 式について解決します
         codelist = self.resolve_operation(codelist)
         return codelist
     
-    def resolve(self):
+    def resolve(self) -> list["Elem"]:
         codelist = self.code2vec(self.code)
         for i in codelist: # 再帰
             i.resolve_self()
@@ -938,7 +938,7 @@ class State_parser(Parser): # 文について解決します
             rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
         return rlist
 
-    def resolve(self):
+    def resolve(self) -> list["Elem"]:
         codelist = self.code2vec(self.code)
         for i in codelist:
             i.resolve_self()
@@ -1089,6 +1089,16 @@ contents:({self.contents})>"""
         # print(f"{type(self).__name__} get_all_local_value 未実装")
         return []
 
+    def negative_inversion(self):
+        """
+        外側にかけられた否定を
+        ド・モルガンの法則や否定対応テーブル、not同士の相殺を用いて解消する
+        Func
+        ParenBlock
+        のみに実装される
+        """
+        pass
+
 ## Elements
 ### basic elements
 class Block(Elem):
@@ -1190,6 +1200,13 @@ class ParenBlock(Elem):
 式の優先順位変更に使用するParenBlockであることに注意
         """
         return self.contents[0].wat_format_gen()
+
+    def negative_inversion(self):
+        """
+        外側にかけられた否定を
+        """
+        for i in self.contents:
+            i.negative_inversion()
 
 class Word(Elem):# Word Elemは仮どめ
     """
@@ -1365,7 +1382,7 @@ class Syntax(Elem):
                 local.set $i
                 br 0
             )
-        )  
+        )
         ```
         """
         wasm_code = ""
@@ -1374,11 +1391,18 @@ class Syntax(Elem):
             wasm_code += "(block $#block{}\n".format(self.loopdepth)
             if self.get_expr():
                 wasm_code += self.expr[0].wat_format_gen()
-                wasm_code += "if\n"
-                wasm_code += "nop\n"
-                wasm_code += "else\n"
-                wasm_code += "br $#block{} \n".format(self.loopdepth) # TODO
-                wasm_code += "end\n"
+                # i32.const 1
+                # i32.xor
+                # br_if block
+                #---
+                # wasm_code += "if\n"
+                # wasm_code += "nop\n"
+                # wasm_code += "else\n"
+                # wasm_code += "br $#block{} \n".format(self.loopdepth) # TODO
+                # wasm_code += "end\n"
+                wasm_code += "i32.const 1\n"
+                wasm_code += "i32.xor\n"
+                wasm_code += "br_if $#block{}\n".format(self.loopdepth)
             else:
                 raise BaseException("Error! while節を書いてください")
             # 処理
@@ -1587,7 +1611,15 @@ class Func(Elem):
             "/=":"i32.div_u",
             "%=":"i32.rem_u",
         }
-    
+        # 否定の対応表
+        self.negative_correspondence_table:dict = {
+            ">=":"<",
+            "<=":">",
+            ">":"<=",
+            "<":">=",
+        }
+        self.nop = "#"
+
     def wat_format_gen(self) -> str:
         """
         # Func.wat_format_gen
@@ -1689,6 +1721,41 @@ class Func(Elem):
             expr_parser = Parser(self.contents, depth = self.depth + 1)
             self.contents = expr_parser.resolve()
             self.contents = [Expr_parser(i,depth=self.depth+1).resolve() for i in self.contents]
+
+    def negative_inversion(self): # TODO 後で実装
+        """
+        `!func() === Func<func()>.negative_inversion()`
+        外側にかけられた否定を
+        - ド・モルガンの法則
+        - 否定対応テーブル
+        - not同士の相殺
+        を用いて解消する
+        """
+        if type(self.name) is Operator:
+            if self.name.ope in self.negative_correspondence_table.keys():
+                self.name = self.negative_correspondence_table[self.name]
+            elif self.name.ope == "&&":
+                # ド・モルガン
+                self.name = "||"
+                for i in self.contents:
+                    if len(i) > 0:
+                        i[0].negative_inversion()
+            elif self.name.ope == "||":
+                # ド・モルガン
+                self.name = "&&"
+                for i in self.contents:
+                    if len(i) > 0:
+                        i[0].negative_inversion()
+            elif self.name.ope == "!":
+                self.name = self.nop
+                # for i in self.contents:
+                #     if len(i) > 0:
+                #         i[0].negative_inversion()
+            else:
+                # 普通の関数の場合は特に何もしない
+                pass
+        else:
+            pass
 
     # def __repr__(self):
     #     return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
