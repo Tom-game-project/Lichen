@@ -2146,6 +2146,33 @@ class Type_f64(Type_Elem):
         super().__init__(name, contents)
 
 class Type_char(Type_Elem):
+    """
+    # Type_char
+
+    """
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
 
+class Type_Mat(Type_Elem):
+    """
+    # Type_Mat
+    ## format
+    MatNxM<T>
+    ## as
+    array
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_Vec(Type_Elem):
+    """
+    # Type_Vec
+    ## format
+    VecN<T>
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_List(Type_Elem):
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
