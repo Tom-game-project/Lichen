@@ -102,9 +102,12 @@ def test03(): # TODO 後でテスト
     code2 = """
 a && b
 """
-    p = lichen.Expr_parser(code2)
+    code3 = """
+!(0 <= a && a <= 10 || flag)
+"""
+    p = lichen.Expr_parser(code3)
     codelist = p.resolve()
-    print("input",code1)
+    print("input",code3)
     print(codelist)
     codelist[0].negative_inversion()
     print(codelist)

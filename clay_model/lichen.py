@@ -1225,7 +1225,18 @@ class Word(Elem):# Word Elemは仮どめ
     get_contents -> <word>
     """
     def __init__(self, name: str, contents: str, depth: int) -> None:
+        """
+        # Word
+        - 変数の場合
+        - 数字の場合
+        - boolの場合
+        """
         super().__init__(name, contents, depth, None)
+        self.bool_flag:bool = True
+
+    def negative_inversion(self):
+        self.bool_flag = False
+        # return super().negative_inversion()
 
     def resolve_self(self):
         """
@@ -1235,8 +1246,8 @@ class Word(Elem):# Word Elemは仮どめ
 
     def __self_is_i32(self) -> bool:
         """
-# self_is_i32
-自分自身がi32であった場合、Trueを返却
+        # self_is_i32
+        自分自身がi32であった場合、Trueを返却
         """
         for i in self.contents:
             if '0' <= i <= '9':
@@ -1259,6 +1270,8 @@ class Word(Elem):# Word Elemは仮どめ
             )
         else:
             return "local.get ${}\n".format(self.contents)
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) bool_flag:({self.bool_flag}) contents:({self.contents})>"
 
 class Syntax(Elem):
     """
@@ -1626,7 +1639,7 @@ class Func(Elem):
             ">":"<=",
             "<":">=",
         }
-        self.nop = "#"
+        self.nop = "#" # 何もしない関数の名前
 
     def wat_format_gen(self) -> str:
         """
@@ -1741,7 +1754,7 @@ class Func(Elem):
         """
         if type(self.name) is Operator:
             if self.name.ope in self.negative_correspondence_table.keys():
-                self.name = self.negative_correspondence_table[self.name]
+                self.name = Operator(self.negative_correspondence_table[self.name.ope], self.depth)
             elif self.name.ope == "&&":
                 # ド・モルガン
                 self.name = "||"
@@ -1756,9 +1769,9 @@ class Func(Elem):
                         i[0].negative_inversion()
             elif self.name.ope == "!":
                 self.name = self.nop
-                # for i in self.contents:
-                #     if len(i) > 0:
-                #         i[0].negative_inversion()
+                for i in self.contents:
+                    if len(i) > 0:
+                        i[0].negative_inversion()
             else:
                 # 普通の関数の場合は特に何もしない
                 pass
@@ -2155,6 +2168,33 @@ class Type_f64(Type_Elem):
         super().__init__(name, contents)
 
 class Type_char(Type_Elem):
+    """
+    # Type_char
+
+    """
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
 
+class Type_Mat(Type_Elem):
+    """
+    # Type_Mat
+    ## format
+    MatNxM<T>
+    ## as
+    array
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_Vec(Type_Elem):
+    """
+    # Type_Vec
+    ## format
+    VecN<T>
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_List(Type_Elem):
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
