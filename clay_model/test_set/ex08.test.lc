@@ -1,5 +1,13 @@
 
-pub fn alpha():i32{
-    return (0 <= c && c<= 10) || (100 <= c && c<= 110);
+pub fn is_digit(c:i32):i32{
+    return 48 <= c && c <= 57;
+}
+
+pub fn is_alpha (c:i32):i32{
+    return 65 <= c || c <= 90;
+}
+
+pub fn is_alnum (c:i32):i32{
+    return is_digit(c) || is_alpha(c);
 }
 

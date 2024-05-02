@@ -702,7 +702,7 @@ class Expr_parser(Parser): # 式について解決します
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## if, elif, else, forをまとめる2
-        codelist =self.grouping_syntaxbox(codelist)
+        codelist = self.grouping_syntaxbox(codelist)
         ## functionの呼び出しをまとめる
         codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
         ## listの呼び出しをまとめる
@@ -1102,8 +1102,6 @@ contents:({self.contents})>"""
         外側にかけられた否定を
         ド・モルガンの法則や否定対応テーブル、not同士の相殺を用いて解消する
         Func
-        ParenBlock
-        のみに実装される
         """
         pass
 
