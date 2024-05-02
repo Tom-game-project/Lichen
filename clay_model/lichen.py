@@ -322,17 +322,21 @@ class Parser:
                     rlist.append(
                         ObjectInstance(
                             name_tmp.get_contents(),# func name
-                            i.get_contents(),#self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
+                            i.get_contents(),       #self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
                             self.depth,
                             self.loopdepth
                     ))
                     name_tmp = None
                     flag = False
                 else:
+                    if name_tmp is not None:
+                        rlist.append(name_tmp)
                     rlist.append(i)
+                    name_tmp = None
             else:
                 if flag:
-                    rlist.append(name_tmp)
+                    if name_tmp is not None:
+                        rlist.append(name_tmp)
                     rlist.append(i)
                     flag = False
                     name_tmp = None
@@ -740,6 +744,7 @@ class State_parser(Parser): # 文について解決します
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
         codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+        print(codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる
@@ -884,6 +889,7 @@ class State_parser(Parser): # 文について解決します
         expr_group:list = list()
         rlist:list = list()
         for i in vec:
+            #print(i)
             if type(i) is Word and i.get_contents() in self.control_statement:
                 name = i.get_contents() # name :example (return, break ,continue, assert)
                 flag = True
@@ -895,6 +901,7 @@ class State_parser(Parser): # 文について解決します
                 expr_group.append(i)
             else:
                 rlist.append(i)
+        #print("+"*30)
         return rlist
     
     def public_checker(self,vec:list["Elem"]):
@@ -940,6 +947,7 @@ class State_parser(Parser): # 文について解決します
 
     def resolve(self) -> list["Elem"]:
         codelist = self.code2vec(self.code)
+        #print(codelist)
         for i in codelist:
             i.resolve_self()
         return codelist
@@ -2108,6 +2116,7 @@ class ControlStatement(Elem):
         return wasm_code
 
     def resolve_self(self):
+        #print(self.contents)
         expr_parser = Parser(self.contents, depth = self.depth + 1)
         self.contents = expr_parser.resolve()
         self.contents = [Expr_parser(i,depth=self.depth+1).resolve() for i in self.contents]
