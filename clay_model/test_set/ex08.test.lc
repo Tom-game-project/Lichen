@@ -11,3 +11,10 @@ pub fn is_alnum (c:i32):i32{
     return is_digit(c) || is_alpha(c);
 }
 
+pub fn is_not_alnum(c:i32):i32{
+    return !(is_digit(c) || is_alpha(c));
+}
+
+pub fn is_not_alnum2(c:i32):i32{
+    return !is_digit(c) && !is_alpha(c);
+}
