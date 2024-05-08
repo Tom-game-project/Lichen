@@ -702,7 +702,7 @@ class Expr_parser(Parser): # 式について解決します
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## if, elif, else, forをまとめる2
-        codelist =self.grouping_syntaxbox(codelist)
+        codelist = self.grouping_syntaxbox(codelist)
         ## functionの呼び出しをまとめる
         codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
         ## listの呼び出しをまとめる
@@ -744,7 +744,6 @@ class State_parser(Parser): # 文について解決します
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
         codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
-        print(codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる
@@ -1102,8 +1101,6 @@ contents:({self.contents})>"""
         外側にかけられた否定を
         ド・モルガンの法則や否定対応テーブル、not同士の相殺を用いて解消する
         Func
-        ParenBlock
-        のみに実装される
         """
         pass
 
@@ -1604,7 +1601,7 @@ class Func(Elem):
     def __init__(self, name: str, contents: list, depth:int,loopdepth: int) -> None:
         super().__init__(name, contents, depth, loopdepth)
         # TODO : 引数の型チェックを入れる
-        self.wasm_ope_correspondence_table = {
+        self.wasm_ope_correspondence_table:dict = {
             # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
             "+":"i32.add", # add
             "-":"i32.sub", # sub 
@@ -1625,13 +1622,18 @@ class Func(Elem):
 
             "=":"local.set"
         }
-        self.wasm_special_ope_correspondence_table:list = {
+        self.wasm_special_ope_correspondence_table:dict = {
             "+=":"i32.add",
             "-=":"i32.sub",
             "*=":"i32.mul",
             "/=":"i32.div_u",
             "%=":"i32.rem_u",
         }
+        # not !
+        self.not_ope:str = "!"
+        self.wasm_not:str = """i32.const 1
+i32.xor
+"""
         # 否定の対応表
         self.negative_correspondence_table:dict = {
             ">=":"<",
@@ -1708,9 +1710,14 @@ class Func(Elem):
                 #     else:
                 #         wasm_code += i[0].wat_format_gen()
                 # wasm_code += call_name + '\n'
+            elif self.name.get_contents() == self.not_ope:
+                # not のときの特別な処理
+                #print("not ope",self.contents[1][0])
+                wasm_code += self.contents[1][0].wat_format_gen()
+                wasm_code += self.wasm_not
             else:
                 call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
-                print(self.contents)
+                #print(self.contents)
                 for i in self.contents: # per arg
                     if len(i) == 0:        # TODO
                         pass
@@ -1925,7 +1932,6 @@ class DecFunc(Elem):
             if r_type[0].get_contents() == "void":
                 pass
             else:  #TODO: 仮
-                print(r_type[0].get_contents())
                 if type(r_type[0].get_contents()) is list:
                     wasm_code += "(result {})\n".format(" ".join(r_type[0].get_contents()))
                 else:
@@ -1954,7 +1960,6 @@ class DecFunc(Elem):
         """
         parser = Parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
-        print("dec funv",self.args)
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
