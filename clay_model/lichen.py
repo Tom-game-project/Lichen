@@ -322,17 +322,21 @@ class Parser:
                     rlist.append(
                         ObjectInstance(
                             name_tmp.get_contents(),# func name
-                            i.get_contents(),#self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
+                            i.get_contents(),       #self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
                             self.depth,
                             self.loopdepth
                     ))
                     name_tmp = None
                     flag = False
                 else:
+                    if name_tmp is not None:
+                        rlist.append(name_tmp)
                     rlist.append(i)
+                    name_tmp = None
             else:
                 if flag:
-                    rlist.append(name_tmp)
+                    if name_tmp is not None:
+                        rlist.append(name_tmp)
                     rlist.append(i)
                     flag = False
                     name_tmp = None
@@ -614,7 +618,7 @@ class Parser:
         else:
             return vec
 
-    def resolve(self):
+    def resolve(self) -> list["Elem"]:
         return self.code2vec(self.code)
 
     def __resolve_func_arg_unit(self,code:list):
@@ -698,7 +702,7 @@ class Expr_parser(Parser): # 式について解決します
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## if, elif, else, forをまとめる2
-        codelist =self.grouping_syntaxbox(codelist)
+        codelist = self.grouping_syntaxbox(codelist)
         ## functionの呼び出しをまとめる
         codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
         ## listの呼び出しをまとめる
@@ -709,7 +713,7 @@ class Expr_parser(Parser): # 式について解決します
         codelist = self.resolve_operation(codelist)
         return codelist
     
-    def resolve(self):
+    def resolve(self) -> list["Elem"]:
         codelist = self.code2vec(self.code)
         for i in codelist: # 再帰
             i.resolve_self()
@@ -884,6 +888,7 @@ class State_parser(Parser): # 文について解決します
         expr_group:list = list()
         rlist:list = list()
         for i in vec:
+            #print(i)
             if type(i) is Word and i.get_contents() in self.control_statement:
                 name = i.get_contents() # name :example (return, break ,continue, assert)
                 flag = True
@@ -895,6 +900,7 @@ class State_parser(Parser): # 文について解決します
                 expr_group.append(i)
             else:
                 rlist.append(i)
+        #print("+"*30)
         return rlist
     
     def public_checker(self,vec:list["Elem"]):
@@ -938,8 +944,9 @@ class State_parser(Parser): # 文について解決します
             rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
         return rlist
 
-    def resolve(self):
+    def resolve(self) -> list["Elem"]:
         codelist = self.code2vec(self.code)
+        #print(codelist)
         for i in codelist:
             i.resolve_self()
         return codelist
@@ -1089,6 +1096,14 @@ contents:({self.contents})>"""
         # print(f"{type(self).__name__} get_all_local_value 未実装")
         return []
 
+    def negative_inversion(self):
+        """
+        外側にかけられた否定を
+        ド・モルガンの法則や否定対応テーブル、not同士の相殺を用いて解消する
+        Func
+        """
+        pass
+
 ## Elements
 ### basic elements
 class Block(Elem):
@@ -1191,6 +1206,13 @@ class ParenBlock(Elem):
         """
         return self.contents[0].wat_format_gen()
 
+    def negative_inversion(self):
+        """
+        外側にかけられた否定を
+        """
+        for i in self.contents:
+            i.negative_inversion()
+
 class Word(Elem):# Word Elemは仮どめ
     """
     引数、変数、関数定義、制御文法の文字列
@@ -1200,7 +1222,18 @@ class Word(Elem):# Word Elemは仮どめ
     get_contents -> <word>
     """
     def __init__(self, name: str, contents: str, depth: int) -> None:
+        """
+        # Word
+        - 変数の場合
+        - 数字の場合
+        - boolの場合
+        """
         super().__init__(name, contents, depth, None)
+        self.bool_flag:bool = True
+
+    def negative_inversion(self):
+        self.bool_flag = False
+        # return super().negative_inversion()
 
     def resolve_self(self):
         """
@@ -1210,8 +1243,8 @@ class Word(Elem):# Word Elemは仮どめ
 
     def __self_is_i32(self) -> bool:
         """
-# self_is_i32
-自分自身がi32であった場合、Trueを返却
+        # self_is_i32
+        自分自身がi32であった場合、Trueを返却
         """
         for i in self.contents:
             if '0' <= i <= '9':
@@ -1234,6 +1267,8 @@ class Word(Elem):# Word Elemは仮どめ
             )
         else:
             return "local.get ${}\n".format(self.contents)
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) bool_flag:({self.bool_flag}) contents:({self.contents})>"
 
 class Syntax(Elem):
     """
@@ -1365,7 +1400,7 @@ class Syntax(Elem):
                 local.set $i
                 br 0
             )
-        )  
+        )
         ```
         """
         wasm_code = ""
@@ -1374,11 +1409,18 @@ class Syntax(Elem):
             wasm_code += "(block $#block{}\n".format(self.loopdepth)
             if self.get_expr():
                 wasm_code += self.expr[0].wat_format_gen()
-                wasm_code += "if\n"
-                wasm_code += "nop\n"
-                wasm_code += "else\n"
-                wasm_code += "br $#block{} \n".format(self.loopdepth) # TODO
-                wasm_code += "end\n"
+                # i32.const 1
+                # i32.xor
+                # br_if block
+                #---
+                # wasm_code += "if\n"
+                # wasm_code += "nop\n"
+                # wasm_code += "else\n"
+                # wasm_code += "br $#block{} \n".format(self.loopdepth) # TODO
+                # wasm_code += "end\n"
+                wasm_code += "i32.const 1\n"
+                wasm_code += "i32.xor\n"
+                wasm_code += "br_if $#block{}\n".format(self.loopdepth)
             else:
                 raise BaseException("Error! while節を書いてください")
             # 処理
@@ -1559,7 +1601,7 @@ class Func(Elem):
     def __init__(self, name: str, contents: list, depth:int,loopdepth: int) -> None:
         super().__init__(name, contents, depth, loopdepth)
         # TODO : 引数の型チェックを入れる
-        self.wasm_ope_correspondence_table = {
+        self.wasm_ope_correspondence_table:dict = {
             # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
             "+":"i32.add", # add
             "-":"i32.sub", # sub 
@@ -1580,14 +1622,27 @@ class Func(Elem):
 
             "=":"local.set"
         }
-        self.wasm_special_ope_correspondence_table:list = {
+        self.wasm_special_ope_correspondence_table:dict = {
             "+=":"i32.add",
             "-=":"i32.sub",
             "*=":"i32.mul",
             "/=":"i32.div_u",
             "%=":"i32.rem_u",
         }
-    
+        # not !
+        self.not_ope:str = "!"
+        self.wasm_not:str = """i32.const 1
+i32.xor
+"""
+        # 否定の対応表
+        self.negative_correspondence_table:dict = {
+            ">=":"<",
+            "<=":">",
+            ">":"<=",
+            "<":">=",
+        }
+        self.nop = "#" # 何もしない関数の名前
+
     def wat_format_gen(self) -> str:
         """
         # Func.wat_format_gen
@@ -1655,9 +1710,14 @@ class Func(Elem):
                 #     else:
                 #         wasm_code += i[0].wat_format_gen()
                 # wasm_code += call_name + '\n'
+            elif self.name.get_contents() == self.not_ope:
+                # not のときの特別な処理
+                #print("not ope",self.contents[1][0])
+                wasm_code += self.contents[1][0].wat_format_gen()
+                wasm_code += self.wasm_not
             else:
                 call_name = self.wasm_ope_correspondence_table[self.name.get_contents()]
-                print(self.contents)
+                #print(self.contents)
                 for i in self.contents: # per arg
                     if len(i) == 0:        # TODO
                         pass
@@ -1689,6 +1749,41 @@ class Func(Elem):
             expr_parser = Parser(self.contents, depth = self.depth + 1)
             self.contents = expr_parser.resolve()
             self.contents = [Expr_parser(i,depth=self.depth+1).resolve() for i in self.contents]
+
+    def negative_inversion(self): # TODO 後で実装
+        """
+        `!func() === Func<func()>.negative_inversion()`
+        外側にかけられた否定を
+        - ド・モルガンの法則
+        - 否定対応テーブル
+        - not同士の相殺
+        を用いて解消する
+        """
+        if type(self.name) is Operator:
+            if self.name.ope in self.negative_correspondence_table.keys():
+                self.name = Operator(self.negative_correspondence_table[self.name.ope], self.depth)
+            elif self.name.ope == "&&":
+                # ド・モルガン
+                self.name = "||"
+                for i in self.contents:
+                    if len(i) > 0:
+                        i[0].negative_inversion()
+            elif self.name.ope == "||":
+                # ド・モルガン
+                self.name = "&&"
+                for i in self.contents:
+                    if len(i) > 0:
+                        i[0].negative_inversion()
+            elif self.name.ope == "!":
+                self.name = self.nop
+                for i in self.contents:
+                    if len(i) > 0:
+                        i[0].negative_inversion()
+            else:
+                # 普通の関数の場合は特に何もしない
+                pass
+        else:
+            pass
 
     # def __repr__(self):
     #     return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
@@ -1837,7 +1932,6 @@ class DecFunc(Elem):
             if r_type[0].get_contents() == "void":
                 pass
             else:  #TODO: 仮
-                print(r_type[0].get_contents())
                 if type(r_type[0].get_contents()) is list:
                     wasm_code += "(result {})\n".format(" ".join(r_type[0].get_contents()))
                 else:
@@ -1866,7 +1960,6 @@ class DecFunc(Elem):
         """
         parser = Parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
-        print("dec funv",self.args)
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
@@ -2041,6 +2134,7 @@ class ControlStatement(Elem):
         return wasm_code
 
     def resolve_self(self):
+        #print(self.contents)
         expr_parser = Parser(self.contents, depth = self.depth + 1)
         self.contents = expr_parser.resolve()
         self.contents = [Expr_parser(i,depth=self.depth+1).resolve() for i in self.contents]
@@ -2079,6 +2173,33 @@ class Type_f64(Type_Elem):
         super().__init__(name, contents)
 
 class Type_char(Type_Elem):
+    """
+    # Type_char
+
+    """
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
 
+class Type_Mat(Type_Elem):
+    """
+    # Type_Mat
+    ## format
+    MatNxM<T>
+    ## as
+    array
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_Vec(Type_Elem):
+    """
+    # Type_Vec
+    ## format
+    VecN<T>
+    """
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
+
+class Type_List(Type_Elem):
+    def __init__(self, name: str, contents: str) -> None:
+        super().__init__(name, contents)
