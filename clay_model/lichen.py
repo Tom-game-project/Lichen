@@ -990,16 +990,17 @@ class State_parser(Parser): # 文について解決します
 class Args_parser(Parser):
 
     def __init__(self, code: str, loopdepth=0, depth=0) -> None:
+        super().__init__(code, loopdepth, depth)
         self.blocks = [
             ('(',')',ParenBlock),
             ('<','>',TypeBlock)
         ]
-        super().__init__(code, loopdepth, depth)
 
 
     def code2vec(self,code:list):
-        codelist = self.grouping_words(code, self.split, self.word_excludes)
-        for i in self.blocks:codelist = self.grouping_elements(codelist, *i)
+        for i in self.blocks:
+            codelist = self.grouping_elements(code, *i)
+        codelist = self.grouping_words(codelist, self.split, self.word_excludes)
         return codelist
 
     def resolve_func_arg(self) -> list:
@@ -1009,7 +1010,7 @@ class Args_parser(Parser):
         """
         rlist:list = []
         rlist = self.code2vec(self.code)
-        print(rlist)
+        print("codelist",rlist)
         rlist = self.comma_spliter(rlist)
         return rlist
 
@@ -1921,6 +1922,13 @@ class Arg2(Elem):
     """
     # ArgParse
     ## 引数とその型のデータを保持する
+    []
+    args dash [
+        <Arg2 depth:(0) name:(a) contents:(['Vec', ['i', '3', '2']])>,
+        <Arg2 depth:(0) name:(b) contents:(['Vec', ['i', '3', '2']])>,
+        <Arg2 depth:(0) name:(c) contents:(['i32'])>,
+        <Arg2 depth:(0) name:(d) contents:(['fn(i32)', 'i32'])>,
+        <Arg2 depth:(0) name:(e) contents:(['fn(Vec', ['i', '3', '2'], ')', 'i32'])>]
     """
     def __init__(self, name: str, contents: list, depth: int) -> None:
         super().__init__(name, contents, depth, None)
@@ -1989,12 +1997,13 @@ class DecFunc(Elem):
                             type_.append(j)
                         else:
                             raise BaseException("引数部分が不正な文法です")
-                elif flag:
-                    # type
-                    type_.append(j.get_contents())
                 else:
-                    # name
-                    name = j.get_contents()
+                    if flag:
+                        # type
+                        type_.append(j.get_contents())
+                    else:
+                        # name
+                        name = j.get_contents()
             rlist.append(Arg2(name, type_, self.depth))
         return rlist    
 
@@ -2049,8 +2058,8 @@ class DecFunc(Elem):
         # resolve_self
         # TODO argsのtypeの処理
         """
-        print("args", self.args)
-        parser = Parser(self.args, depth = self.depth + 1)
+        #print("args", self.args)
+        parser = Args_parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
         print("args", self.args)
         print("args dash",self.arg_parse2(self.args))
@@ -2243,7 +2252,7 @@ class ControlStatement(Elem):
 
 
 # Type_Elem
-class Type_Elem:
+class Type_Elem(Elem):
     """
     # Type_Elem
     タイプ宣言用
@@ -2256,7 +2265,7 @@ class Type_Elem:
             "f64"
         ]
 
-        super().__init__(name, contents)
+        super().__init__(name, contents,None,None)
 
 
 class TypeBlock(Type_Elem):
