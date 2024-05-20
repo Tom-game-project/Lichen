@@ -90,7 +90,17 @@ func0(a,b),func1(b,a),func2(aaa)
     codelist = p.resolve()
     print(codelist)
 
-def test03(): # TODO 後でテスト
+def test03():
+    code0 = """
+fn main(a:Vec<i32>,b:Vec<i32>,c:i32,d:fn(i32) -> i32,e :fn(Vec<i32>) -> i32 ):Vec<i32>
+{
+}
+"""
+    p = lichen.State_parser(code0)
+    codelist = p.resolve()
+    print(codelist)
+
+def test04(): # TODO 後でテスト
     """
     # test03 
     否定反転メソッドのテスト
@@ -126,6 +136,8 @@ if __name__=="__main__":
         test02()
     elif args[1] == "3":
         test03()
+    elif args[1] == "4":
+        test04()
     else:
         print("else")
 
