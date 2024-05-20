@@ -83,7 +83,10 @@ def test02():
     code2="""
 func0(a,b),func1(b,a),func2(aaa)
 """
-    p = lichen.State_parser(code2)
+    code3="""
+    a[i + 1][1][2]
+"""
+    p = lichen.State_parser(code3)
     codelist = p.resolve()
     print(codelist)
 

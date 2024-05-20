@@ -969,6 +969,7 @@ class State_parser(Parser): # 文について解決します
                     export_functions.append(elem.get_name())
                 wasm_code += elem.wat_format_gen()
             else:
+                # function 以外の要素がトップレベルに配置された場合
                 raise BaseException("Only functions can be placed at the top level")
         # ここで、exportしたい関数をまとめて宣言する
         # (export "gcd" (func $gcd))
