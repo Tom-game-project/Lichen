@@ -6,7 +6,9 @@
   ;; 0xffffffffffffffff == 2**64 - 1
   (data (i32.const 12) "helloworld")
   ;;(memory (export "mem") 1 2)
-  (func (export "sum") (param $n i32) (result i32)
+  (func (export "sum") 
+    (param $n i32);; 0からnまで足した
+    (result i32)  ;; 合計
     (local $i i32)
     (local $ret i32)
     i32.const 0

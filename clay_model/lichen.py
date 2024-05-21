@@ -1011,8 +1011,6 @@ class Type_parser(Parser):
           - Mat3x4 // 実体は(T, T, T, T, T, T, T, T, T, T, T, T)
           - Mat4x...
           a*b
-
-
         """
         self.code = code
         self.primitive_types = [
@@ -1601,38 +1599,39 @@ class Func(Elem):
     def __init__(self, name: str, contents: list, depth:int,loopdepth: int) -> None:
         super().__init__(name, contents, depth, loopdepth)
         # TODO : 引数の型チェックを入れる
+        atom_type = "i32"
         self.wasm_ope_correspondence_table:dict = {
             # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
-            "+":"i32.add", # add
-            "-":"i32.sub", # sub 
-            "*":"i32.mul", # mul
-            "/":"i32.div_u",# div
-            "%":"i32.rem_u", # mod 
+            "+":f"{atom_type}.add", # add
+            "-":f"{atom_type}.sub", # sub 
+            "*":f"{atom_type}.mul", # mul
+            "/":f"{atom_type}.div_u",# div
+            "%":f"{atom_type}.rem_u", # mod 
 
-            "==":"i32.eq",# Equal => TODO : i32.eqz
-            "!=":"i32.ne",# Not equal 
+            "==":f"{atom_type}.eq",# Equal => TODO : i32.eqz
+            "!=":f"{atom_type}.ne",# Not equal 
             # lt_u lt_sはsigned unsignedの違い気をつける
-            "<":"i32.lt_s",# Less than
-            ">":"i32.gt_s", # greater than
-            "<=":"i32.le_s", # Less or equal
-            ">=":"i32.ge_s", # greater or equal
+            "<":f"{atom_type}.lt_s",# Less than
+            ">":f"{atom_type}.gt_s", # greater than
+            "<=":f"{atom_type}.le_s", # Less or equal
+            ">=":f"{atom_type}.ge_s", # greater or equal
 
-            "&&":"i32.and", # and
-            "||":"i32.or", # or
+            "&&":f"{atom_type}.and", # and
+            "||":f"{atom_type}.or", # or
 
             "=":"local.set"
         }
         self.wasm_special_ope_correspondence_table:dict = {
-            "+=":"i32.add",
-            "-=":"i32.sub",
-            "*=":"i32.mul",
-            "/=":"i32.div_u",
-            "%=":"i32.rem_u",
+            "+=":f"{atom_type}.add",
+            "-=":f"{atom_type}.sub",
+            "*=":f"{atom_type}.mul",
+            "/=":f"{atom_type}.div_u",
+            "%=":f"{atom_type}.rem_u",
         }
         # not !
         self.not_ope:str = "!"
-        self.wasm_not:str = """i32.const 1
-i32.xor
+        self.wasm_not:str = f"""{atom_type}.const 1
+{atom_type}.xor
 """
         # 否定の対応表
         self.negative_correspondence_table:dict = {
@@ -1926,12 +1925,14 @@ class DecFunc(Elem):
         args:list[Arg] = self.arg_parse(self.args)
         r_type = self.return_type
         wasm_code += "(func ${}\n".format(funcname) # open func    
-        for i in args:
+        for i in args:                                                       # TODO: 自作の型などについての設定
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
         if r_type:                                                           # TODO: 自作の型などについての設定
+            # 型の処理
             if r_type[0].get_contents() == "void":
                 pass
-            else:  #TODO: 仮
+            else:                                                            #TODO: 仮
+                # ここでLichen型をwasm型をに変換する
                 if type(r_type[0].get_contents()) is list:
                     wasm_code += "(result {})\n".format(" ".join(r_type[0].get_contents()))
                 else:
@@ -2154,7 +2155,14 @@ class Type_Elem(Elem):
     タイプ宣言用
     """
     def __init__(self, name: str, contents: str) -> None:
-        super().__init__(name, contents)    
+        super().__init__(name, contents)
+
+    def type_check(self):
+        """
+        # type_check 
+        IRに対して正しい型が設定するかを再帰的にチェックする
+        """
+        pass
 
 class Type_i32(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
@@ -2180,6 +2188,7 @@ class Type_char(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
 
+# 特別なType
 class Type_Mat(Type_Elem):
     """
     # Type_Mat
