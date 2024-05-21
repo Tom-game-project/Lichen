@@ -1671,8 +1671,9 @@ class Func(Elem):
                 # `+=`や`-=`のとき
                 # 演算子は両脇に2つの引数を取る
                 wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
-                # print("-"*50,self.contents[1][0])
+                #print("-"*50,self.wasm_special_ope_correspondence_table[self.name.get_contents()],self.contents[0][0],self.contents[1][0])
                 wasm_code += self.contents[1][0].wat_format_gen()
+                wasm_code += self.wasm_special_ope_correspondence_table[self.name.get_contents()] + "\n"
                 wasm_code += "local.set ${}\n".format(self.contents[0][0].contents)
             elif self.name.get_contents() in self.wasm_ope_correspondence_table:
                 # 普通の演算子(代入やincrではない)場合
