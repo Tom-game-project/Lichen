@@ -2229,9 +2229,9 @@ class ControlStatement(Elem):
         if self.name == "return":
             wasm_code += "return\n"
         elif self.name == "break":
-            pass
+            wasm_code += "br $#block{}\n".format(self.loopdepth - 1)
         elif self.name == "continue":
-            pass
+            wasm_code += "br $#loop{}\n".format(self.loopdepth - 1)
         elif self.name == "assert":
             pass
         else:

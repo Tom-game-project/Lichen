@@ -52,6 +52,7 @@ def test00():
         "test_set/ex06.test.lc",
         "test_set/ex07.test.lc",
         "test_set/ex08.test.lc",
+        "test_set/ex09.test.lc",
     ]
     tester = LichenTester(paths)
     print("test start".center(100,"="))
