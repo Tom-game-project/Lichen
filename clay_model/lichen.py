@@ -14,7 +14,7 @@ class Parser:
     # 式を解決します
     def __init__(self, code:str,loopdepth = 0,depth = 0) -> None:
         self.code:str = code
-        self.loopdepth=loopdepth
+        self.loopdepth = loopdepth
         self.depth:int = depth
 
         # setting
@@ -120,8 +120,8 @@ class Parser:
         # クォーテーションをまとめる
         open_flag:bool = False
         escape_flag:bool = False
-        rlist:list = list()
-        group:list = list()
+        rlist:list = []
+        group:list = []
         newline_counter :int = 0
         column_counter:int = 0
         for inner in code:
@@ -164,8 +164,8 @@ class Parser:
         # grouping_elements 
         grouping block listblock parenblock
         """
-        rlist:list[str] = list()
-        group:list[str] = list()
+        rlist:list[str] = []
+        group:list[str] = []
         depth:int = 0
 
         for i in vec:
@@ -367,8 +367,8 @@ class Parser:
         """
         flag:bool = False
         expr:str = None
-        group:list = list() # index格納用
-        rlist:list = list()
+        group:list = [] # index格納用
+        rlist:list = []
         for i in vec:
             if type(i) is ListBlock: # もし、[]を見つけたなら
                 if flag:
@@ -489,8 +489,8 @@ class Parser:
         [a,b,c,] == (a,b,c)
         ## 各要素を式として処理する
         """
-        group:list = list()
-        rlist:list = list()
+        group:list = []
+        rlist:list = []
         for i in vec:
             if i == ',':
                 rlist.append(copy.copy(group))
@@ -625,7 +625,7 @@ class Parser:
         codelist = self.grouping_words(code, self.split, self.word_excludes)
         return codelist
 
-    def resolve_func_arg(self):
+    def resolve_func_arg(self) -> list:
         """
         # resolve_func_arg
         関数の引数の解決
@@ -790,7 +790,14 @@ class State_parser(Parser): # 文について解決します
                 func_name = i.get_name()
                 func_args = i.get_contents()
             elif flag and  type(i) is Block:
-                rlist.append(DecFunc( func_name, copy.copy(func_args), copy.copy(rtype_group), i, False, self.depth))
+                rlist.append(DecFunc( 
+                    func_name,              # funcname 
+                    copy.copy(func_args),   # args
+                    copy.copy(rtype_group), # rtype
+                    i,                      # contents
+                    False,                  #
+                    self.depth              # 
+                ))
                 flag = False
                 return_type_flag = False
                 rtype_group.clear()
@@ -969,6 +976,7 @@ class State_parser(Parser): # 文について解決します
                     export_functions.append(elem.get_name())
                 wasm_code += elem.wat_format_gen()
             else:
+                # function 以外の要素がトップレベルに配置された場合
                 raise BaseException("Only functions can be placed at the top level")
         # ここで、exportしたい関数をまとめて宣言する
         # (export "gcd" (func $gcd))
@@ -977,6 +985,34 @@ class State_parser(Parser): # 文について解決します
         wasm_code += ")"
 
         return wasm_code
+
+
+class Args_parser(Parser):
+
+    def __init__(self, code: str, loopdepth=0, depth=0) -> None:
+        super().__init__(code, loopdepth, depth)
+        self.blocks = [
+            ('(',')',ParenBlock),
+            ('<','>',TypeBlock)
+        ]
+
+
+    def code2vec(self,code:list):
+        for i in self.blocks:
+            codelist = self.grouping_elements(code, *i)
+        codelist = self.grouping_words(codelist, self.split, self.word_excludes)
+        return codelist
+
+    def resolve_func_arg(self) -> list:
+        """
+        # resolve_func_arg
+        関数の引数の解決
+        """
+        rlist:list = []
+        rlist = self.code2vec(self.code)
+        print("codelist",rlist)
+        rlist = self.comma_spliter(rlist)
+        return rlist
 
 
 # typeの解析
@@ -1032,6 +1068,18 @@ class Type_parser(Parser):
         self.open = "<"
         self.close = ">"
 
+    def grouping_functype(self) -> list:
+        """
+        # grouping_functype 
+        """
+        pass
+
+    def grouping_tupletype(self) -> list:
+        """
+        # grouping_tupletype
+        """
+        pass
+
     def code2vec(self, code: str) -> list[str]:
         """
         # code2vec
@@ -1054,9 +1102,11 @@ class Elem:
         self.depth = depth
         self.loopdepth = loopdepth
 
-    def get_contents(self):return self.contents
+    def get_contents(self):
+        return self.contents
 
-    def get_name(self):return self.name
+    def get_name(self): 
+        return self.name
 
     def wat_format_gen(self) -> str:
         """
@@ -1870,6 +1920,28 @@ class Arg(Elem):
     def __init__(self, name: str, type_: str, depth:int) -> None:
         super().__init__(name, type_, depth ,None)
 
+class Arg2(Elem):
+    """
+    # ArgParse
+    ## 引数とその型のデータを保持する
+    []
+    args dash [
+        <Arg2 depth:(0) name:(a) contents:(['Vec', ['i', '3', '2']])>,
+        <Arg2 depth:(0) name:(b) contents:(['Vec', ['i', '3', '2']])>,
+        <Arg2 depth:(0) name:(c) contents:(['i32'])>,
+        <Arg2 depth:(0) name:(d) contents:(['fn(i32)', 'i32'])>,
+        <Arg2 depth:(0) name:(e) contents:(['fn(Vec', ['i', '3', '2'], ')', 'i32'])>]
+    """
+    def __init__(self, name: str, contents: list, depth: int) -> None:
+        super().__init__(name, contents, depth, None)
+    
+    def resolve_self(self):
+        """
+        型を解釈する
+        """
+        pass
+
+
 ### function declaration
 class DecFunc(Elem):
     """
@@ -1880,14 +1952,14 @@ class DecFunc(Elem):
     """
     def __init__(self, funcname:str,args:list,return_type, contents: Block,pub_flag:bool, depth:int) -> None:
         super().__init__(funcname, contents, depth, 0)
-        self.return_type = return_type
+        self.return_type = return_type # 返り値のタイプ
         self.args = args
         self.pub_flag  = pub_flag
 
     def arg_parse(self,args_list:list[list]) -> list[Arg]:
         """
         # arg_parse
-        [[<word>,":",<word>],[<word>,":",<word>]]
+        arg_list : [[<word>,":",<word>],[<word>,":",<word>]]
         このような形のリスト
         """
         rlist:list = list()
@@ -1906,6 +1978,36 @@ class DecFunc(Elem):
                     name = j.get_contents()
             rlist.append(Arg(name, type_, self.depth))
         return rlist
+
+    def arg_parse2(self,args_list:list[list]) -> list[Arg2]:
+        """
+        # arg_parse
+        arg_list : [[<word>,":",<word>],[<word>,":",<word>]]
+        このような形のリスト
+        """
+        rlist:list = list()
+        for i in args_list:
+            flag:bool = False
+            name = None
+            type_ = []
+            for j in i:
+                if type(j) is str:
+                    if j == ":":
+                        flag = True
+                    else:
+                        if flag:
+                            type_.append(j)
+                        else:
+                            raise BaseException("引数部分が不正な文法です")
+                else:
+                    if flag:
+                        # type
+                        type_.append(j.get_contents())
+                    else:
+                        # name
+                        name = j.get_contents()
+            rlist.append(Arg2(name, type_, self.depth))
+        return rlist    
 
     def wat_format_gen(self) -> str:
         """
@@ -1960,8 +2062,12 @@ class DecFunc(Elem):
         # resolve_self
         # TODO argsのtypeの処理
         """
-        parser = Parser(self.args, depth = self.depth + 1)
+        #print("args", self.args)
+        parser = Args_parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
+        print("args", self.args)
+        print("args dash",self.arg_parse2(self.args))
+        # ここでタイプを変更する関数を作成する
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
@@ -2156,6 +2262,27 @@ class Type_Elem(Elem):
     タイプ宣言用
     """
     def __init__(self, name: str, contents: str) -> None:
+        self.primitive_type = [
+            "i32",
+            "i64",
+            "f32",
+            "f64"
+        ]
+
+        super().__init__(name, contents,None,None)
+
+
+class TypeBlock(Type_Elem):
+    """
+    リストを格納
+    [<expr>,...]
+    # returns
+    get_contents -> [<expr>,...] # 式集合
+    """
+    def __init__(self, name: str, contents: str, depth: int, loopdepth:int) -> None:
+        # depth:void 
+        # loopdepth:void
+        # blockをまとめるときのダミーの引数
         super().__init__(name, contents)
 
     def type_check(self):

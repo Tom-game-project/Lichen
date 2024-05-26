@@ -2,7 +2,7 @@
   (import "console" "print" (func $print (param i32) (param i32)))
   (import "js" "mem" (memory 1))
   (data (i32.const 0) "\00\01\00\00\02\00\00\00\ff\ff\ff\ff")
-  ;; 0xffffffff == 2**32 - 1
+  ;; 0xffffffff == 2**32 - 1 == 4294967295
   ;; 0xffffffffffffffff == 2**64 - 1
   (data (i32.const 12) "helloworld")
   ;;(memory (export "mem") 1 2)
@@ -35,18 +35,19 @@
       end
     end
     local.get $ret)
+
     (func
     (export "sayHello")
     i32.const 12
     i32.const 10
     call $print
     )
+
     ;; (func $showbite
     ;; (param $offset i32)
     ;; (param $length i32)
     ;; (local $i i32)
     ;; i32.const 0
     ;; local.set $i
-
     ;; )
 )
