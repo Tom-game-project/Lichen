@@ -15,4 +15,6 @@ cd cray_model
 python3 test.py
 ```
 
+## easy way for converting wat(wasm text format) to wasm
 
+[wat2wasm](https://webassembly.github.io/wabt/demo/wat2wasm/)

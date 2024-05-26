@@ -14,7 +14,7 @@ class Parser:
     # 式を解決します
     def __init__(self, code:str,loopdepth = 0,depth = 0) -> None:
         self.code:str = code
-        self.loopdepth=loopdepth
+        self.loopdepth = loopdepth
         self.depth:int = depth
 
         # setting
@@ -120,8 +120,8 @@ class Parser:
         # クォーテーションをまとめる
         open_flag:bool = False
         escape_flag:bool = False
-        rlist:list = list()
-        group:list = list()
+        rlist:list = []
+        group:list = []
         newline_counter :int = 0
         column_counter:int = 0
         for inner in code:
@@ -164,8 +164,8 @@ class Parser:
         # grouping_elements 
         grouping block listblock parenblock
         """
-        rlist:list[str] = list()
-        group:list[str] = list()
+        rlist:list[str] = []
+        group:list[str] = []
         depth:int = 0
 
         for i in vec:
@@ -367,8 +367,8 @@ class Parser:
         """
         flag:bool = False
         expr:str = None
-        group:list = list() # index格納用
-        rlist:list = list()
+        group:list = [] # index格納用
+        rlist:list = []
         for i in vec:
             if type(i) is ListBlock: # もし、[]を見つけたなら
                 if flag:
@@ -489,8 +489,8 @@ class Parser:
         [a,b,c,] == (a,b,c)
         ## 各要素を式として処理する
         """
-        group:list = list()
-        rlist:list = list()
+        group:list = []
+        rlist:list = []
         for i in vec:
             if i == ',':
                 rlist.append(copy.copy(group))
@@ -625,7 +625,7 @@ class Parser:
         codelist = self.grouping_words(code, self.split, self.word_excludes)
         return codelist
 
-    def resolve_func_arg(self):
+    def resolve_func_arg(self) -> list:
         """
         # resolve_func_arg
         関数の引数の解決
@@ -790,7 +790,14 @@ class State_parser(Parser): # 文について解決します
                 func_name = i.get_name()
                 func_args = i.get_contents()
             elif flag and  type(i) is Block:
-                rlist.append(DecFunc( func_name, copy.copy(func_args), copy.copy(rtype_group), i, False, self.depth))
+                rlist.append(DecFunc( 
+                    func_name,              # funcname 
+                    copy.copy(func_args),   # args
+                    copy.copy(rtype_group), # rtype
+                    i,                      # contents
+                    False,                  #
+                    self.depth              # 
+                ))
                 flag = False
                 return_type_flag = False
                 rtype_group.clear()
@@ -969,6 +976,7 @@ class State_parser(Parser): # 文について解決します
                     export_functions.append(elem.get_name())
                 wasm_code += elem.wat_format_gen()
             else:
+                # function 以外の要素がトップレベルに配置された場合
                 raise BaseException("Only functions can be placed at the top level")
         # ここで、exportしたい関数をまとめて宣言する
         # (export "gcd" (func $gcd))
@@ -977,6 +985,34 @@ class State_parser(Parser): # 文について解決します
         wasm_code += ")"
 
         return wasm_code
+
+
+class Args_parser(Parser):
+
+    def __init__(self, code: str, loopdepth=0, depth=0) -> None:
+        super().__init__(code, loopdepth, depth)
+        self.blocks = [
+            ('(',')',ParenBlock),
+            ('<','>',TypeBlock)
+        ]
+
+
+    def code2vec(self,code:list):
+        for i in self.blocks:
+            codelist = self.grouping_elements(code, *i)
+        codelist = self.grouping_words(codelist, self.split, self.word_excludes)
+        return codelist
+
+    def resolve_func_arg(self) -> list:
+        """
+        # resolve_func_arg
+        関数の引数の解決
+        """
+        rlist:list = []
+        rlist = self.code2vec(self.code)
+        print("codelist",rlist)
+        rlist = self.comma_spliter(rlist)
+        return rlist
 
 
 # typeの解析
@@ -1011,8 +1047,6 @@ class Type_parser(Parser):
           - Mat3x4 // 実体は(T, T, T, T, T, T, T, T, T, T, T, T)
           - Mat4x...
           a*b
-
-
         """
         self.code = code
         self.primitive_types = [
@@ -1033,6 +1067,18 @@ class Type_parser(Parser):
         self.basic_types_tuple = ""    # tuple
         self.open = "<"
         self.close = ">"
+
+    def grouping_functype(self) -> list:
+        """
+        # grouping_functype 
+        """
+        pass
+
+    def grouping_tupletype(self) -> list:
+        """
+        # grouping_tupletype
+        """
+        pass
 
     def code2vec(self, code: str) -> list[str]:
         """
@@ -1056,9 +1102,11 @@ class Elem:
         self.depth = depth
         self.loopdepth = loopdepth
 
-    def get_contents(self):return self.contents
+    def get_contents(self):
+        return self.contents
 
-    def get_name(self):return self.name
+    def get_name(self): 
+        return self.name
 
     def wat_format_gen(self) -> str:
         """
@@ -1601,38 +1649,39 @@ class Func(Elem):
     def __init__(self, name: str, contents: list, depth:int,loopdepth: int) -> None:
         super().__init__(name, contents, depth, loopdepth)
         # TODO : 引数の型チェックを入れる
+        atom_type = "i32"
         self.wasm_ope_correspondence_table:dict = {
             # https://developer.mozilla.org/en-US/docs/WebAssembly/Reference/Numeric
-            "+":"i32.add", # add
-            "-":"i32.sub", # sub 
-            "*":"i32.mul", # mul
-            "/":"i32.div_u",# div
-            "%":"i32.rem_u", # mod 
+            "+":f"{atom_type}.add", # add
+            "-":f"{atom_type}.sub", # sub 
+            "*":f"{atom_type}.mul", # mul
+            "/":f"{atom_type}.div_u",# div
+            "%":f"{atom_type}.rem_u", # mod 
 
-            "==":"i32.eq",# Equal => TODO : i32.eqz
-            "!=":"i32.ne",# Not equal 
+            "==":f"{atom_type}.eq",# Equal => TODO : i32.eqz
+            "!=":f"{atom_type}.ne",# Not equal 
             # lt_u lt_sはsigned unsignedの違い気をつける
-            "<":"i32.lt_s",# Less than
-            ">":"i32.gt_s", # greater than
-            "<=":"i32.le_s", # Less or equal
-            ">=":"i32.ge_s", # greater or equal
+            "<":f"{atom_type}.lt_s",# Less than
+            ">":f"{atom_type}.gt_s", # greater than
+            "<=":f"{atom_type}.le_s", # Less or equal
+            ">=":f"{atom_type}.ge_s", # greater or equal
 
-            "&&":"i32.and", # and
-            "||":"i32.or", # or
+            "&&":f"{atom_type}.and", # and
+            "||":f"{atom_type}.or", # or
 
             "=":"local.set"
         }
         self.wasm_special_ope_correspondence_table:dict = {
-            "+=":"i32.add",
-            "-=":"i32.sub",
-            "*=":"i32.mul",
-            "/=":"i32.div_u",
-            "%=":"i32.rem_u",
+            "+=":f"{atom_type}.add",
+            "-=":f"{atom_type}.sub",
+            "*=":f"{atom_type}.mul",
+            "/=":f"{atom_type}.div_u",
+            "%=":f"{atom_type}.rem_u",
         }
         # not !
         self.not_ope:str = "!"
-        self.wasm_not:str = """i32.const 1
-i32.xor
+        self.wasm_not:str = f"""{atom_type}.const 1
+{atom_type}.xor
 """
         # 否定の対応表
         self.negative_correspondence_table:dict = {
@@ -1672,8 +1721,9 @@ i32.xor
                 # `+=`や`-=`のとき
                 # 演算子は両脇に2つの引数を取る
                 wasm_code += "local.get ${}\n".format(self.contents[0][0].contents)
-                # print("-"*50,self.contents[1][0])
+                #print("-"*50,self.wasm_special_ope_correspondence_table[self.name.get_contents()],self.contents[0][0],self.contents[1][0])
                 wasm_code += self.contents[1][0].wat_format_gen()
+                wasm_code += self.wasm_special_ope_correspondence_table[self.name.get_contents()] + "\n"
                 wasm_code += "local.set ${}\n".format(self.contents[0][0].contents)
             elif self.name.get_contents() in self.wasm_ope_correspondence_table:
                 # 普通の演算子(代入やincrではない)場合
@@ -1870,6 +1920,28 @@ class Arg(Elem):
     def __init__(self, name: str, type_: str, depth:int) -> None:
         super().__init__(name, type_, depth ,None)
 
+class Arg2(Elem):
+    """
+    # ArgParse
+    ## 引数とその型のデータを保持する
+    []
+    args dash [
+        <Arg2 depth:(0) name:(a) contents:(['Vec', ['i', '3', '2']])>,
+        <Arg2 depth:(0) name:(b) contents:(['Vec', ['i', '3', '2']])>,
+        <Arg2 depth:(0) name:(c) contents:(['i32'])>,
+        <Arg2 depth:(0) name:(d) contents:(['fn(i32)', 'i32'])>,
+        <Arg2 depth:(0) name:(e) contents:(['fn(Vec', ['i', '3', '2'], ')', 'i32'])>]
+    """
+    def __init__(self, name: str, contents: list, depth: int) -> None:
+        super().__init__(name, contents, depth, None)
+    
+    def resolve_self(self):
+        """
+        型を解釈する
+        """
+        pass
+
+
 ### function declaration
 class DecFunc(Elem):
     """
@@ -1880,14 +1952,14 @@ class DecFunc(Elem):
     """
     def __init__(self, funcname:str,args:list,return_type, contents: Block,pub_flag:bool, depth:int) -> None:
         super().__init__(funcname, contents, depth, 0)
-        self.return_type = return_type
+        self.return_type = return_type # 返り値のタイプ
         self.args = args
         self.pub_flag  = pub_flag
 
     def arg_parse(self,args_list:list[list]) -> list[Arg]:
         """
         # arg_parse
-        [[<word>,":",<word>],[<word>,":",<word>]]
+        arg_list : [[<word>,":",<word>],[<word>,":",<word>]]
         このような形のリスト
         """
         rlist:list = list()
@@ -1906,6 +1978,36 @@ class DecFunc(Elem):
                     name = j.get_contents()
             rlist.append(Arg(name, type_, self.depth))
         return rlist
+
+    def arg_parse2(self,args_list:list[list]) -> list[Arg2]:
+        """
+        # arg_parse
+        arg_list : [[<word>,":",<word>],[<word>,":",<word>]]
+        このような形のリスト
+        """
+        rlist:list = list()
+        for i in args_list:
+            flag:bool = False
+            name = None
+            type_ = []
+            for j in i:
+                if type(j) is str:
+                    if j == ":":
+                        flag = True
+                    else:
+                        if flag:
+                            type_.append(j)
+                        else:
+                            raise BaseException("引数部分が不正な文法です")
+                else:
+                    if flag:
+                        # type
+                        type_.append(j.get_contents())
+                    else:
+                        # name
+                        name = j.get_contents()
+            rlist.append(Arg2(name, type_, self.depth))
+        return rlist    
 
     def wat_format_gen(self) -> str:
         """
@@ -1926,12 +2028,14 @@ class DecFunc(Elem):
         args:list[Arg] = self.arg_parse(self.args)
         r_type = self.return_type
         wasm_code += "(func ${}\n".format(funcname) # open func    
-        for i in args:
+        for i in args:                                                       # TODO: 自作の型などについての設定
             wasm_code += "(param ${} {})\n".format(i.get_name(),i.get_contents())
         if r_type:                                                           # TODO: 自作の型などについての設定
+            # 型の処理
             if r_type[0].get_contents() == "void":
                 pass
-            else:  #TODO: 仮
+            else:                                                            #TODO: 仮
+                # ここでLichen型をwasm型をに変換する
                 if type(r_type[0].get_contents()) is list:
                     wasm_code += "(result {})\n".format(" ".join(r_type[0].get_contents()))
                 else:
@@ -1958,8 +2062,12 @@ class DecFunc(Elem):
         # resolve_self
         # TODO argsのtypeの処理
         """
-        parser = Parser(self.args, depth = self.depth + 1)
+        #print("args", self.args)
+        parser = Args_parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
+        print("args", self.args)
+        print("args dash",self.arg_parse2(self.args))
+        # ここでタイプを変更する関数を作成する
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
@@ -2124,9 +2232,9 @@ class ControlStatement(Elem):
         if self.name == "return":
             wasm_code += "return\n"
         elif self.name == "break":
-            pass
+            wasm_code += "br $#block{}\n".format(self.loopdepth - 1)
         elif self.name == "continue":
-            pass
+            wasm_code += "br $#loop{}\n".format(self.loopdepth - 1)
         elif self.name == "assert":
             pass
         else:
@@ -2154,7 +2262,35 @@ class Type_Elem(Elem):
     タイプ宣言用
     """
     def __init__(self, name: str, contents: str) -> None:
-        super().__init__(name, contents)    
+        self.primitive_type = [
+            "i32",
+            "i64",
+            "f32",
+            "f64"
+        ]
+
+        super().__init__(name, contents,None,None)
+
+
+class TypeBlock(Type_Elem):
+    """
+    リストを格納
+    [<expr>,...]
+    # returns
+    get_contents -> [<expr>,...] # 式集合
+    """
+    def __init__(self, name: str, contents: str, depth: int, loopdepth:int) -> None:
+        # depth:void 
+        # loopdepth:void
+        # blockをまとめるときのダミーの引数
+        super().__init__(name, contents)
+
+    def type_check(self):
+        """
+        # type_check 
+        IRに対して正しい型が設定するかを再帰的にチェックする
+        """
+        pass
 
 class Type_i32(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
@@ -2180,6 +2316,7 @@ class Type_char(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
         super().__init__(name, contents)
 
+# 特別なType
 class Type_Mat(Type_Elem):
     """
     # Type_Mat

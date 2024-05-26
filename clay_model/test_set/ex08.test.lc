@@ -18,3 +18,19 @@ pub fn is_not_alnum(c:i32):i32{
 pub fn is_not_alnum2(c:i32):i32{
     return !is_digit(c) && !is_alpha(c);
 }
+
+pub fn if_test(c:i32):(i32,i32){
+    let a = if (c){
+        1
+    }else{
+        0
+    };
+    let b = if (c){
+        0
+    }else{
+        1
+    };
+    return a,b;
+}
+
+
