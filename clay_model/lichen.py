@@ -1112,9 +1112,11 @@ class Elem:
         self.depth = depth
         self.loopdepth = loopdepth
 
-    def get_contents(self):return self.contents
+    def get_contents(self):
+        return self.contents
 
-    def get_name(self):return self.name
+    def get_name(self): 
+        return self.name
 
     def wat_format_gen(self) -> str:
         """
