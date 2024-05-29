@@ -93,11 +93,28 @@ func0(a,b),func1(b,a),func2(aaa)
 
 def test03():
     code0 = """
-fn main(a:Vec<i32>,b:Vec<i32>,c:i32,d:fn(i32):i32, e: fn(Vec<i32>):i32 ):Vec<i32>
+fn main(
+    a:Vec<i32>,
+    b:Vec<i32>,
+    c:i32,
+    d:fn(i32):i32,
+    e: fn(Vec<i32>):i32 ):Vec<i32>
 {
 }
 """
-    p = lichen.State_parser(code0)
+    code1 = """
+fn main(
+    a:Vec<i32>,
+    b:Vec<i32>,
+    d:fn(i32):i32,
+    e: fn(Vec<i32>):i32,
+    f:Option<Vec<i32>,str>,
+    c:i32
+    ):Vec<i32>
+{
+}
+"""
+    p = lichen.State_parser(code1)
     codelist = p.resolve()
     print("codelist",codelist)
 

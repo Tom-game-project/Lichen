@@ -1010,7 +1010,7 @@ class Args_parser(Parser):
         """
         rlist:list = []
         rlist = self.code2vec(self.code)
-        print("codelist",rlist)
+        #print("codelist",rlist)
         rlist = self.comma_spliter(rlist)
         return rlist
 
@@ -1050,6 +1050,7 @@ class Type_parser(Parser):
 
 
         """
+        # super().__init__(code)
         self.code = code
         self.primitive_types = [
             "i32",
@@ -1066,9 +1067,10 @@ class Type_parser(Parser):
         self.basic_types_vec = "Vec"   # vector
         self.basic_types_mat = "Mat"   # matrix
         self.basic_types_list = "List" # list
-        self.basic_types_tuple = ""    # tuple
-        self.open = "<"
-        self.close = ">"
+        self.blocks = [
+            ['<','>',TypeBlock],
+            ['(',')',TypeTuple],
+        ]
 
     def grouping_functype(self) -> list:
         """
@@ -1086,8 +1088,14 @@ class Type_parser(Parser):
         """
         # code2vec
         type解析用
+
         """
-        return super().code2vec(code)
+        codelist = copy.deepcopy(code)
+        codelist = self.grouping_words( codelist, self.split, ['<','>','(',')'])
+        for i in self.blocks:
+            codelist = self.grouping_elements(codelist,*i)
+        
+        return codelist
 
     def resolve(self):
         pass
@@ -1164,7 +1172,7 @@ class Block(Elem):
     # returns
     get_contents -> <proc>
     """
-    def __init__(self, name: str, contents: str, depth: int, loopdepth: int) -> None:super().__init__(name, contents, depth, loopdepth)
+    def __init__(self, name: str, contents: list, depth: int, loopdepth: int) -> None:super().__init__(name, contents, depth, loopdepth)
 
     def resolve_self(self):
         state_parser = State_parser(self.contents, depth = self.depth + 1)
@@ -1223,7 +1231,7 @@ class ListBlock(Elem):
         parser = Parser(expr, depth = self.depth + 1)
         self.contents = [self.resolve_self_unit(i) for i in parser.resolve()]
 
-    def __init__(self, name: str, contents: str, depth: int, loopdepth: int) -> None:
+    def __init__(self, name: str, contents: list, depth: int, loopdepth: int) -> None:
         super().__init__(name, contents, depth, loopdepth)
 
 class ParenBlock(Elem):
@@ -1238,7 +1246,7 @@ class ParenBlock(Elem):
     # returns
     get_contents -> <expr>,... # 式集合 式の範囲で宣言集合になることはない
     """
-    def __init__(self, name: str, contents: str, depth: int, loopdepth: int) -> None:
+    def __init__(self, name: str, contents: list, depth: int, loopdepth: int) -> None:
         super().__init__(name, contents, depth, loopdepth)
 
     def resolve_self(self):
@@ -1923,20 +1931,24 @@ class Arg2(Elem):
     """
     # ArgParse
     ## 引数とその型のデータを保持する
-    []
+    
     args dash [
         <Arg2 depth:(0) name:(a) contents:(['Vec', ['i', '3', '2']])>,
         <Arg2 depth:(0) name:(b) contents:(['Vec', ['i', '3', '2']])>,
         <Arg2 depth:(0) name:(c) contents:(['i32'])>,
         <Arg2 depth:(0) name:(d) contents:(['fn(i32)', 'i32'])>,
-        <Arg2 depth:(0) name:(e) contents:(['fn(Vec', ['i', '3', '2'], ')', 'i32'])>]
+        <Arg2 depth:(0) name:(e) contents:(['fn(Vec', ['i', '3', '2'], ')', 'i32'])>
+    ]
     """
     def __init__(self, name: str, contents: list, depth: int) -> None:
         super().__init__(name, contents, depth, None)
     
+    def grouping_words():
+        pass
     def resolve_self(self):
         """
         型を解釈する
+        ここでは、タイプ型と、引数変数型の区別がついている必要がある
         """
         pass
 
@@ -1981,7 +1993,7 @@ class DecFunc(Elem):
     def arg_parse2(self,args_list:list[list]) -> list[Arg2]:
         """
         # arg_parse
-        arg_list : [[<word>,":",<word>],[<word>,":",<word>]]
+        arg_list : [[<word>,":",<type>],[<word>,":",<type>]]
         このような形のリスト
         """
         rlist:list = list()
@@ -2062,8 +2074,8 @@ class DecFunc(Elem):
         #print("args", self.args)
         parser = Args_parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
-        print("args", self.args)
-        print("args dash",self.arg_parse2(self.args))
+        #print("args", self.args)
+        #print("args dash",self.arg_parse2(self.args))
         # ここでタイプを変更する関数を作成する
         self.contents.resolve_self()
 
@@ -2271,16 +2283,45 @@ class Type_Elem(Elem):
 
 class TypeBlock(Type_Elem):
     """
-    リストを格納
-    [<expr>,...]
-    # returns
-    get_contents -> [<expr>,...] # 式集合
+    # TypeBlock
+    ## synatax
+    Vec<T,T>
+    ## interpret as
+    name = "Vec"
+    contents = [<type>,<type>]
     """
-    def __init__(self, name: str, contents: str, depth: int, loopdepth:int) -> None:
+    def __init__(self, name: str, contents: list) -> None:
         # depth:void 
         # loopdepth:void
         # blockをまとめるときのダミーの引数
+        super().__init__(name, contents, None, None)
+
+    def resolve_self(self):
+        """
+        # resolve_self 
+        self.contentsのそれぞれの要素はタイプ型
+        TODO
+        """
+        pass
+
+class TypeTuple(Type_Elem):
+    """
+    # Type_tuple
+    ## syantax
+    (T, T, T)
+    ## interpret as
+    name = None
+    contents = [<type>,<type>]
+    """
+    def __init__(self, name: str, contents: list) -> None:
         super().__init__(name, contents)
+
+    def resolve_self(self):
+        """
+        # 
+        TODO
+        """
+        pass
 
 class Type_i32(Type_Elem):
     def __init__(self, name: str, contents: str) -> None:
