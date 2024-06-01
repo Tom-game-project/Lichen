@@ -1,0 +1,19 @@
+fn countdigit_helper(n: i32,count :i32):i32
+{
+    return if (n == 0 && count == 0)
+    {
+        1;
+    }
+    elif (n == 0)
+    {
+        count;
+    }
+    else{
+    	countdigit_helper(n / 10, count + 1);
+    };
+}
+
+fn    countdigit(n:i32):i32
+{
+    return countdigit_helper(n, 0);
+}

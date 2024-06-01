@@ -53,6 +53,7 @@ def test00():
         "test_set/ex07.test.lc",
         "test_set/ex08.test.lc",
         "test_set/ex09.test.lc",
+        "test_set/ex10.test.lc",
     ]
     tester = LichenTester(paths)
     print("test start".center(100,"="))
@@ -118,31 +119,13 @@ fn main(
     codelist = p.resolve()
     print("codelist",codelist)
 
-def test04(): # TODO 後でテスト
-    """
-    # test03 
-    否定反転メソッドのテスト
 
-    """
-    code0 = """
-!a
+# タイプパーサのテスト
+def test04(): 
+    code00 = """
+Option<(i32,i32,Vec<&str>),&str>
 """
-    code1 = """
-!(a && b)
-"""
-    code2 = """
-a && b
-"""
-    code3 = """
-!(0 <= a && a <= 10 || flag)
-"""
-    p = lichen.Expr_parser(code3)
-    codelist = p.resolve()
-    print("input",code3)
-    print(codelist)
-    codelist[0].negative_inversion()
-    print(codelist)
-
+    lichen.Type_parser()
 
 if __name__=="__main__":
     args = sys.argv

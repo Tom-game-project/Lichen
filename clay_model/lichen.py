@@ -1088,17 +1088,20 @@ class Type_parser(Parser):
         """
         # code2vec
         type解析用
-
         """
         codelist = copy.deepcopy(code)
-        codelist = self.grouping_words( codelist, self.split, ['<','>','(',')'])
+        codelist = self.grouping_words(codelist, self.split, ['<','>','(',')'])
         for i in self.blocks:
+            # コードブロックをかき集める
             codelist = self.grouping_elements(codelist,*i)
         
         return codelist
 
-    def resolve(self):
-        pass
+    def resolve(self) -> list["Elem"]:
+        codelist = self.code2vec(self.code)
+        for i in codelist:
+            i.resolve_self()
+        return codelist
 
 
 # Base Elem
