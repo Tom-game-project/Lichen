@@ -145,7 +145,7 @@ class Parser:
                         open_flag = False
                     else:
                         group.append(inner)
-                        position = (newline_counter,column_counter)
+                        # position = (newline_counter,column_counter)
                         open_flag = True
                 else:
                     if open_flag:
@@ -429,7 +429,8 @@ class Parser:
         str | None
         """
         for i in ordered_opelist:
-            if text == i:return text
+            if text == i:
+                return text
         return None
 
     def grouping_operator_unit(self,vec:list,ope:str):
@@ -505,7 +506,8 @@ class Parser:
         # クォーテーションをまとめる
         codelist = self.resolve_quotation(code, "\"")
         # ブロック、リストブロック、パレンブロック Elemをまとめる
-        for i in self.blocks:codelist = self.grouping_elements(codelist, *i)
+        for i in self.blocks:
+            codelist = self.grouping_elements(codelist, *i)
         # Wordをまとめる
         codelist = self.grouping_words(codelist, self.split, self.word_excludes)
         ## if, elif, else, forをまとめる
@@ -696,7 +698,8 @@ class Expr_parser(Parser): # 式について解決します
         # クォーテーションをまとめる
         codelist = self.resolve_quotation(code, "\"")
         # ブロック、リストブロック、パレンブロック Elemをまとめる
-        for i in self.blocks:codelist = self.grouping_elements(codelist, *i)
+        for i in self.blocks:
+            codelist = self.grouping_elements(codelist, *i)
         # Wordをまとめる
         codelist = self.grouping_words(codelist, self.split, self.word_excludes)
         ## if, elif, else, forをまとめる
@@ -737,7 +740,8 @@ class State_parser(Parser): # 文について解決します
         # クォーテーションをまとめる
         codelist = self.resolve_quotation(code, "\"")
         # ブロック、リストブロック、パレンブロック Elemをまとめる
-        for i in self.blocks:codelist = self.grouping_elements(codelist, *i)
+        for i in self.blocks:
+            codelist = self.grouping_elements(codelist, *i)
         # Wordをまとめる
         codelist = self.grouping_words(codelist, self.split, self.word_excludes)
         ## if, elif, else, forをまとめる
@@ -802,7 +806,7 @@ class State_parser(Parser): # 文について解決します
                 return_type_flag = False
                 rtype_group.clear()
                 func_args.clear()
-            elif type(i) is str and i == ":" and flag:
+            elif isinstance(i, str) and i == ":" and flag:
                 return_type_flag = True
             elif return_type_flag:
                 rtype_group.append(i)
@@ -833,14 +837,14 @@ class State_parser(Parser): # 文について解決します
                 mutable = i.get_contents()
             elif assignment_flag: # <expr> 追加 contents_group
                 # <expr>
-                if type(i) is str and i == ';': # 宣言の終了
+                if isinstance(i,str) and i == ';': # 宣言の終了
                     #print(mutable,value_name,rtype_group,contents_group)
                     flag, type_flag, assignment_flag , mutable, value_name = self.__group_contents_decvalue(mutable, value_name, rtype_group, contents_group, rlist)
                 else:
                     # ここでのiは代入する<expr>の一部
                     contents_group.append(i)
             elif type_flag: # <expr> 追加 rtype_group
-                if type(i) is str:
+                if isinstance(i,str):
                     if i == '=':
                         assignment_flag = True
                     elif i == ';':
@@ -851,7 +855,7 @@ class State_parser(Parser): # 文について解決します
                     # ここでのiは<type>の一部
                     rtype_group.append(i)
             elif flag: # 
-                if type(i) is str:
+                if isinstance(i,str):
                     if i == ':': # タイプ宣言の始まり
                         type_flag = True
                     elif i == ';': # 宣言の終了
@@ -899,7 +903,7 @@ class State_parser(Parser): # 文について解決します
             if type(i) is Word and i.get_contents() in self.control_statement:
                 name = i.get_contents() # name :example (return, break ,continue, assert)
                 flag = True
-            elif type(i) is str and i == ';' and flag:
+            elif isinstance(i, str) and i == ';' and flag:
                 rlist.append(ControlStatement(name,copy.copy(expr_group),self.depth,self.loopdepth))
                 expr_group.clear()
                 flag = False
@@ -942,7 +946,7 @@ class State_parser(Parser): # 文について解決します
                     rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
                     group.clear()
                 rlist.append(i)
-            elif type(i) is str and i == ";":
+            elif isinstance(i, str) and i == ";":
                 rlist.append(Expr(None,copy.copy(group),self.depth,self.loopdepth))
                 group.clear()
             else:
@@ -1775,7 +1779,7 @@ i32.xor
                     else:
                         wasm_code += i[0].wat_format_gen()
                 wasm_code += call_name + '\n'
-        elif type(self.name) is str:
+        elif isinstance(self.name, str):
             for i in self.contents: # per arg
                 if len(i) == 0:        # TODO
                     pass
@@ -1910,7 +1914,8 @@ class Data(Elem):
 
     def __repr__(self):
         text:str = ""
-        for i in self.data:text += repr(i) + ",\n"
+        for i in self.data:
+            text += repr(i) + ",\n"
         return f"<{type(self).__name__} depth:({self.depth}) data:({text})>"
 
 class Arg(Elem):
@@ -1992,7 +1997,7 @@ class DecFunc(Elem):
             name = None
             type_ = []
             for j in i:
-                if type(j) is str:
+                if isinstance(j, str):
                     if j == ":":
                         flag = True
                     else:
@@ -2035,7 +2040,7 @@ class DecFunc(Elem):
             if r_type[0].get_contents() == "void":
                 pass
             else:  #TODO: 仮
-                if type(r_type[0].get_contents()) is list:
+                if isinstance(r_type[0].get_contents(),list):
                     wasm_code += "(result {})\n".format(" ".join(r_type[0].get_contents()))
                 else:
                     wasm_code += "(result {})\n".format(r_type[0].get_contents())
@@ -2078,7 +2083,7 @@ class DecFunc(Elem):
         decfunc内で使用するローカル変数をすべて取得するメソッドを作成する
         decvalueのリスト
         """
-        rlist:list = list()
+        # rlist:list = list()
         # error check
         if type(self.contents) is Block:
             #print ("decfunc".center(50,'='))
