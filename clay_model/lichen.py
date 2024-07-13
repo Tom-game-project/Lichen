@@ -59,7 +59,7 @@ class Parser:
             self.right_priority_list|\
             self.prefix_priority_list).keys(),
             key=lambda a:len(a))[::-1]
-        self.min_priority_operation:int = max((
+        self.max_priority_operation:int = max((
             self.left_priority_list |\
             self.right_priority_list |\
             self.prefix_priority_list).values()
@@ -563,7 +563,7 @@ class Parser:
         # returns 
         最も優先順位の低い演算子のindexを返却する
         """
-        priority_tmp:int = self.min_priority_operation + 1 # 最初は優先順位表の最大値 + 1
+        priority_tmp:int = self.max_priority_operation + 1 # 最初は優先順位表の最大値 + 1
         index_tmp = None
         for i,j in enumerate(vec):
             if type(j) is Operator:
