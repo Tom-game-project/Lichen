@@ -1,0 +1,18 @@
+fn tarai_h(x:i32) -> fn(i32) -> fn(i32) -> i32 {
+    return fn (y:i32) -> fn(i32) -> i32{
+        return if (x <= y) {
+            fn (_:i32) -> i32{
+                return y
+            }
+        }else{
+            fn (z:i32) -> i32{
+                return tarai_h(tarai_h(x - 1)(y)(z))(tarai_h(y - 1)(z)(x))(tarai_h(z - 1)(x)(y));
+            }
+        }
+    }
+}
+
+
+export tarai(x:i32, y:i32, z:i32) -> i32{
+    return tarai_h(x)(y)(z);
+}
