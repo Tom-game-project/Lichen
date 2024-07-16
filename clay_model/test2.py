@@ -90,7 +90,7 @@ def test02():
     a[1][1][2]
 """
     code4 = """
-fn (a:i32,b:i32){ a + b}
+fn (a:i32,b:i32):i32 { return a + b; }
 """
     p = lichen.Expr_parser(code4)
     codelist = p.resolve()

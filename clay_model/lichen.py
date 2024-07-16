@@ -521,7 +521,7 @@ class Parser:
         for i in ordered_opelist:
             rlist = self.grouping_operator_unit(rlist,i)
         return rlist
-    
+
     def grouping_lambda(self,vec:list) -> list:
         """
         # grouping_lambda 
@@ -531,6 +531,7 @@ class Parser:
         rlist:list = []
         args_tmp = None
         block_tmp = None
+        return_type_tmp = []
         flag1:bool = False
         flag2:bool = False
         for i in vec:
@@ -549,14 +550,17 @@ class Parser:
                     rlist.append(
                         DecLambda(
                             args_tmp,
+                            copy.deepcopy(return_type_tmp),
                             block_tmp.get_contents(),
                             self.depth,
                             self.loopdepth
                         )
                     )
+                    return_type_tmp.clear()
                     flag1,flag2 = False,False
                 else:
-                    raise BaseException("invalid syntax error fn token")
+                    # ここでreturn タイプを採取する
+                    return_type_tmp.append(i)
             else:
                 rlist.append(i)
         if flag1 or flag2:
@@ -2196,20 +2200,24 @@ class DecFunc(Elem):
         return self.contents.get_all_local_value()
 
 class DecLambda(Elem):
-    def __init__(self,args, contents: str, depth: int, loopdepth: int) -> None:
+    def __init__(self,args,return_type, contents: str, depth: int, loopdepth: int) -> None:
         super().__init__(
             None,
             contents,
             depth,
             loopdepth
-        ) 
+        )
+        self.return_type = return_type
         self.args = args
-    
 
     def resolve_self(self):
         # TODO: resolve args :self.args
+        # TODO: resolve args :self.return_type
         state_parser = State_parser(self.contents,loopdepth = self.loopdepth,depth = self.depth + 1)
         self.contents = state_parser.resolve()
+
+    def __repr__(self):
+        return f"<{type(self).__name__} depth:({self.depth}) args:({self.args}) rtype:({self.return_type}) contents:({self.contents})>"
     
 
 class DecValue(Elem):
