@@ -297,6 +297,41 @@ class Parser:
             else:
                 rlist.append(i)
         return rlist
+
+    def contain_callable(self,vec:list):
+        """
+        callableな状態があってかつそれが呼ばれようとしているときに、true
+        ```
+        anyfunc()()
+        ^^^^^^^^^
+        '-> this is callable!
+        
+        anyfunc()
+        ^^^^^^^^^
+        '-> this is not callable
+
+        anylist[]()
+        ^^^^^^^^^
+        '-> this is callable!
+        """
+        flag:bool = False
+        name_tmp:Word|Func = None
+    
+        for i in vec:
+            if (type(i) is Word) or (type(i) is Func):
+                name_tmp  = i
+                flag = True
+            elif type(i) is ParenBlock:
+                if flag and name_tmp.contents not in self.control_statement:
+                    return True
+            else:
+                if flag:
+                    flag = False
+                    name_tmp = None
+                else:
+                    pass
+        return False
+
     
     def grouping_functioncall(self,vec:list,block,ObjectInstance:"Elem") -> list:
         """
@@ -309,23 +344,28 @@ class Parser:
         """
         flag:bool = False
         name_tmp:Word = None
-        rlist:list = list()
+        rlist:list = []
+        # print("="*50)
+        print(vec)
         for i in vec:
-            if type(i) is Word:
+            if (type(i) is Word) or (type(i) is Func):
                 if flag:
                     rlist.append(name_tmp)
                 name_tmp  = i
                 flag = True
-            elif type(i) is block:
+            elif type(i) is ParenBlock:
                 if flag and name_tmp.contents not in self.control_statement:
                     # return ();みたいなかっこ悪い書き方もできる！
-                    rlist.append(
-                        ObjectInstance(
-                            name_tmp.get_contents(),# func name
+                    obj = Func(
+                            name_tmp,# func name
                             i.get_contents(),       #self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
                             self.depth,
                             self.loopdepth
-                    ))
+                    )
+                    print(obj)
+                    rlist.append(
+                        obj
+                        )
                     name_tmp = None
                     flag = False
                 else:
@@ -513,7 +553,8 @@ class Parser:
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
-        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+        while self.contain_callable(codelist):
+            codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         
@@ -707,7 +748,10 @@ class Expr_parser(Parser): # 式について解決します
         ## if, elif, else, forをまとめる2
         codelist = self.grouping_syntaxbox(codelist)
         ## functionの呼び出しをまとめる
-        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+        while self.contain_callable(codelist):
+            print("before !",codelist)
+            codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+            print("after",codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる
@@ -747,7 +791,9 @@ class State_parser(Parser): # 文について解決します
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
-        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+
+        while self.contain_callable(codelist):
+            codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる

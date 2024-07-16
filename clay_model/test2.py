@@ -54,6 +54,7 @@ def test00():
         "test_set/ex08.test.lc",
         "test_set/ex09.test.lc",
         "test_set/ex10.test.lc",
+        "test_set/ex11.test.lc",
     ]
     tester = LichenTester(paths)
     print("test start".center(100,"="))
@@ -80,17 +81,17 @@ def test01():
 
 def test02():
     code="""
-        tarai(tarai(x - 1, y, z), tarai(y - 1, z, x), tarai(z - 1, x, y));
+        let a = (1 + x) * 2;
     """
     code2="""
-func0(a,b),func1(b,a),func2(aaa)
-"""
+        tarai(1)(2)(3)
+    """
     code3="""
-    a[i + 1][1][2]
+    a[1][1][2]
 """
-    p = lichen.State_parser(code3)
+    p = lichen.Expr_parser(code2)
     codelist = p.resolve()
-    print(codelist)
+    print("codelist",codelist)
 
 def test03():
     code0 = """
