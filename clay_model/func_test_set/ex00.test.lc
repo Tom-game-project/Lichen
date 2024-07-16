@@ -1,0 +1,13 @@
+fn func00(a:i32, c:i32) -> fn (i32) -> i32{
+    let add = fn (a:i32) -> i32{
+        return a + c;
+    };
+    let sub = fn sub (a:i32) -> i32{
+        return a - c;
+    };
+    return if (a > 0){
+        add
+    }else{
+        sub
+    };
+}

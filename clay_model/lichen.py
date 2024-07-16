@@ -343,7 +343,7 @@ class Parser:
         TODO:ここでは、returnやbreak,continueが関数として認識されないようにする
         """
         flag:bool = False
-        name_tmp:Word = None
+        name_tmp:Word | Func = None
         rlist:list = []
         # print("="*50)
         print(vec)
@@ -520,6 +520,47 @@ class Parser:
         rlist:list = copy.copy(vec)
         for i in ordered_opelist:
             rlist = self.grouping_operator_unit(rlist,i)
+        return rlist
+    
+    def grouping_lambda(self,vec:list) -> list:
+        """
+        # grouping_lambda 
+        この関数は関数内で宣言された関数、
+        Lichenではとりあえず関数ないで宣言できる関数を無名関数のみに絞ることで式指向を実現させる
+        """
+        rlist:list = []
+        args_tmp = None
+        block_tmp = None
+        flag1:bool = False
+        flag2:bool = False
+        for i in vec:
+            if type(i) is Word and i.get_contents() == "fn":
+                flag1 = True
+            elif flag1:
+                if type(i) is ParenBlock:
+                    args_tmp = i
+                    flag1 = False
+                    flag2 = True
+                else:
+                    raise BaseException("invalid syntax error fn token")
+            elif flag2:
+                if type(i) is Block:
+                    block_tmp = i
+                    rlist.append(
+                        DecLambda(
+                            args_tmp,
+                            block_tmp.get_contents(),
+                            self.depth,
+                            self.loopdepth
+                        )
+                    )
+                    flag1,flag2 = False,False
+                else:
+                    raise BaseException("invalid syntax error fn token")
+            else:
+                rlist.append(i)
+        if flag1 or flag2:
+            raise BaseException("invalid syntax error fn token")
         return rlist
 
     # comma_spliter
@@ -747,6 +788,7 @@ class Expr_parser(Parser): # 式について解決します
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## if, elif, else, forをまとめる2
         codelist = self.grouping_syntaxbox(codelist)
+        codelist = self.grouping_lambda(codelist)
         ## functionの呼び出しをまとめる
         while self.contain_callable(codelist):
             print("before !",codelist)
@@ -1709,7 +1751,7 @@ class Func(Elem):
     get_contents -> (args:[<expr>,...])
     get_name -> (funcname: <name>)
     """
-    def __init__(self, name: str, contents: list, depth:int,loopdepth: int) -> None:
+    def __init__(self, name: "Elem", contents: list, depth:int,loopdepth: int) -> None:
         super().__init__(name, contents, depth, loopdepth)
         # TODO : 引数の型チェックを入れる
         self.wasm_ope_correspondence_table:dict = {
@@ -2152,6 +2194,23 @@ class DecFunc(Elem):
         else:
             print ("Error! : function contetns is not Block")
         return self.contents.get_all_local_value()
+
+class DecLambda(Elem):
+    def __init__(self,args, contents: str, depth: int, loopdepth: int) -> None:
+        super().__init__(
+            None,
+            contents,
+            depth,
+            loopdepth
+        ) 
+        self.args = args
+    
+
+    def resolve_self(self):
+        # TODO: resolve args :self.args
+        state_parser = State_parser(self.contents,loopdepth = self.loopdepth,depth = self.depth + 1)
+        self.contents = state_parser.resolve()
+    
 
 class DecValue(Elem):
     """
