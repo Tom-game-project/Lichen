@@ -6,7 +6,10 @@ TODO : コメントをかけるようにする
 
 """
 import copy
+import logging
 
+logging.basicConfig(format="%(lineno)s:%(levelname)s:%(message)s",level=logging.DEBUG)
+logging.disable()
 # === Parser ===
 
 class Parser:
@@ -345,8 +348,7 @@ class Parser:
         flag:bool = False
         name_tmp:Word | Func = None
         rlist:list = []
-        # print("="*50)
-        print(vec)
+        logging.debug(vec)
         for i in vec:
             if (type(i) is Word) or (type(i) is Func):
                 if flag:
@@ -362,7 +364,7 @@ class Parser:
                             self.depth,
                             self.loopdepth
                     )
-                    print(obj)
+                    logging.debug(obj)
                     rlist.append(
                         obj
                         )
@@ -795,9 +797,7 @@ class Expr_parser(Parser): # 式について解決します
         codelist = self.grouping_lambda(codelist)
         ## functionの呼び出しをまとめる
         while self.contain_callable(codelist):
-            print("before !",codelist)
             codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
-            print("after",codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる
@@ -1232,7 +1232,7 @@ class Elem:
         print(f"resolve_self 未実装 {type(self).__name__}")
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) name:({self.name}) contents:({self.contents})>"
 
     def show(self):
         """
@@ -1425,7 +1425,7 @@ class Word(Elem):# Word Elemは仮どめ
         else:
             return "local.get ${}\n".format(self.contents)
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) bool_flag:({self.bool_flag}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) name:({self.name}) bool_flag:({self.bool_flag}) contents:({self.contents})>"
 
 class Syntax(Elem):
     """
@@ -1458,7 +1458,7 @@ class Syntax(Elem):
 
     def __repr__(self):
         # override
-        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
 
     def get_all_local_value(self):
         rlist:list = list()
@@ -1726,7 +1726,7 @@ class SyntaxBox(Elem):
             all_if_block_has_return = self.__if_unreachable_checker() and self.__if_has_else(self.contents)
             for i in self.contents:                 # contents内の要素はすべて、syntax
                 if all_if_block_has_return:
-                    print(i)
+                    logging.debug(i)
                     wasm_code += i.wat_format_gen("if",return_type = "None") # if elif else
                 else:
                     wasm_code += i.wat_format_gen("if",return_type = "i32")
@@ -1988,7 +1988,7 @@ class List(Elem):
         self.index_list = [self.resolve_self_unit(i.get_contents()) for i in self.index_list]
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.expr}) index:({self.index_list})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) expr:({self.expr}) index:({self.index_list})>"
 
 class Operator(Elem):
     """
@@ -2001,7 +2001,7 @@ class Operator(Elem):
         self.ope = ope
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) ope:({self.ope})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) ope:({self.ope})>"
 
 class Data(Elem):
     """
@@ -2019,7 +2019,7 @@ class Data(Elem):
         text:str = ""
         for i in self.data:
             text += repr(i) + ",\n"
-        return f"<{type(self).__name__} depth:({self.depth}) data:({text})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) data:({text})>"
 
 class Arg(Elem):
     """
@@ -2182,7 +2182,7 @@ class DecFunc(Elem):
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} depth:({self.depth}) pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
 
     def get_all_local_value(self) -> list:
         """
@@ -2217,7 +2217,7 @@ class DecLambda(Elem):
         self.contents = state_parser.resolve()
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) args:({self.args}) rtype:({self.return_type}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) args:({self.args}) rtype:({self.return_type}) contents:({self.contents})>"
     
 
 class DecValue(Elem):
@@ -2255,7 +2255,7 @@ class DecValue(Elem):
             pass
 
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
 
     def get_all_local_value(self):
         rlist:list = list()
@@ -2305,7 +2305,7 @@ class Expr(Elem): # Exprは一時的なものである
         self.contents = expr_parser.resolve()
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
 
     def get_all_local_value(self):
         rlist:list = list()
