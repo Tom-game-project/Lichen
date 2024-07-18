@@ -1,9 +1,9 @@
-fn func00(a:i32, c:i32) -> fn (i32) -> i32{
-    let add = fn (a:i32) -> i32{
-        return a + c;
+fn func00(a:i32, b:i32) : fn (i32) : i32{
+    let add = fn (c:i32):i32{
+        return c + b;
     };
-    let sub = fn sub (a:i32) -> i32{
-        return a - c;
+    let sub = fn (c:i32):i32{
+        return c - b;
     };
     return if (a > 0){
         add

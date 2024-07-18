@@ -8,8 +8,9 @@ TODO : コメントをかけるようにする
 import copy
 import logging
 
-logging.basicConfig(format="%(lineno)s:%(levelname)s:%(message)s",level=logging.DEBUG)
-logging.disable()
+logging.basicConfig(format="%(lineno)s:%(levelname)s:%(message)s", level=logging.DEBUG)
+# logging.disable()
+
 # === Parser ===
 
 class Parser:
@@ -335,8 +336,7 @@ class Parser:
                     pass
         return False
 
-    
-    def grouping_functioncall(self,vec:list,block,ObjectInstance:"Elem") -> list:
+    def grouping_functioncall(self,vec:list) -> list:
         """
         # grouping_call
         ## group function calls
@@ -364,7 +364,7 @@ class Parser:
                             self.depth,
                             self.loopdepth
                     )
-                    logging.debug(obj)
+                    # logging.debug(obj)
                     rlist.append(
                         obj
                         )
@@ -535,23 +535,19 @@ class Parser:
         block_tmp = None
         return_type_tmp = []
         flag1:bool = False
-        flag2:bool = False
+        # flag2:bool = False
+
+        logging.debug(vec)
         for i in vec:
-            if type(i) is Word and i.get_contents() == "fn":
+            if (type(i) is Func) and (type(i.get_name()) is Word) and (i.get_name().get_contents() == "fn"):
                 flag1 = True
-            elif flag1:
-                if type(i) is ParenBlock:
-                    args_tmp = i
-                    flag1 = False
-                    flag2 = True
-                else:
-                    raise BaseException("invalid syntax error fn token")
-            elif flag2:
-                if type(i) is Block:
+                args_tmp = i.get_contents()
+            elif type(i) is Block:
+                if flag1:
                     block_tmp = i
                     rlist.append(
                         DecLambda(
-                            args_tmp,
+                            copy.deepcopy(args_tmp),
                             copy.deepcopy(return_type_tmp),
                             block_tmp.get_contents(),
                             self.depth,
@@ -559,15 +555,47 @@ class Parser:
                         )
                     )
                     return_type_tmp.clear()
-                    flag1,flag2 = False,False
+                    flag1 = False
                 else:
-                    # ここでreturn タイプを採取する
-                    return_type_tmp.append(i)
+                    rlist.append(i)
+            elif flag1:
+                return_type_tmp.append(i)
             else:
                 rlist.append(i)
-        if flag1 or flag2:
-            raise BaseException("invalid syntax error fn token")
         return rlist
+
+        # for i in vec:
+        #     if type(i) is Word and i.get_contents() == "fn":
+        #         flag1 = True
+        #     elif flag1:
+        #         if type(i) is ParenBlock:
+        #             args_tmp = i
+        #             flag1 = False
+        #             flag2 = True
+        #         else:
+        #             raise BaseException("invalid syntax error fn token")
+        #     elif flag2:
+        #         if type(i) is Block:
+        #             block_tmp = i
+        #             rlist.append(
+        #                 DecLambda(
+        #                     args_tmp,
+        #                     copy.deepcopy(return_type_tmp),
+        #                     block_tmp.get_contents(),
+        #                     self.depth,
+        #                     self.loopdepth
+        #                 )
+        #             )
+        #             return_type_tmp.clear()
+        #             flag1,flag2 = False,False
+        #         else:
+        #             # ここでreturn タイプを採取する
+        #             return_type_tmp.append(i)
+        #     else:
+        #         rlist.append(i)
+        # if flag1 or flag2:
+        #     raise BaseException("invalid syntax error fn token")
+        # return rlist
 
     # comma_spliter
     def comma_spliter(self,vec:list) -> list:
@@ -601,7 +629,7 @@ class Parser:
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
         while self.contain_callable(codelist):
-            codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+            codelist = self.grouping_functioncall(codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         
@@ -797,7 +825,7 @@ class Expr_parser(Parser): # 式について解決します
         codelist = self.grouping_lambda(codelist)
         ## functionの呼び出しをまとめる
         while self.contain_callable(codelist):
-            codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+            codelist = self.grouping_functioncall(codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる
@@ -805,9 +833,10 @@ class Expr_parser(Parser): # 式について解決します
         ## 演算子を解決する
         codelist = self.resolve_operation(codelist)
         return codelist
-    
+
     def resolve(self) -> list["Elem"]:
         codelist = self.code2vec(self.code)
+        logging.debug(codelist)
         for i in codelist: # 再帰
             i.resolve_self()
         return codelist
@@ -839,7 +868,7 @@ class State_parser(Parser): # 文について解決します
         ## functionの呼び出しをまとめる
 
         while self.contain_callable(codelist):
-            codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+            codelist = self.grouping_functioncall(codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる
@@ -871,25 +900,31 @@ class State_parser(Parser): # 文について解決します
         # str
         func_name:str = None
         # list
-        func_args:list = list()
-        rtype_group:list = list()
-        rlist:list = list()
+        func_args:list = []
+        rtype_group:list = []
+        rlist:list = []
         for i in vec:
             if type(i) is Word:
-                if i.get_contents() == self.FUNCTION:
-                    flag = True
-                elif return_type_flag:
+                if return_type_flag:
                     rtype_group.append(i)
+                elif i.get_contents() == self.FUNCTION:
+                    flag = True
                 else:
                     rlist.append(i)
-            elif type(i) is Func and flag:
-                func_name = i.get_name()
-                func_args = i.get_contents()
+            elif type(i) is Func:
+                if return_type_flag:
+                    rtype_group.append(i)
+                elif flag:
+                    func_name = i.get_name()
+                    func_args = i.get_contents()
+                else:
+                    rlist.append(i)
             elif flag and  type(i) is Block:
+                logging.debug(f"function name {rtype_group}")
                 rlist.append(DecFunc( 
-                    func_name,              # funcname 
-                    copy.copy(func_args),   # args
-                    copy.copy(rtype_group), # rtype
+                    copy.deepcopy(func_name),              # funcname 
+                    copy.deepcopy(func_args),   # args
+                    copy.deepcopy(rtype_group), # rtype
                     i,                      # contents
                     False,                  #
                     self.depth              # 
@@ -900,6 +935,7 @@ class State_parser(Parser): # 文について解決します
                 func_args.clear()
             elif isinstance(i, str) and i == ":" and flag:
                 return_type_flag = True
+                # rtype_group.append(i)
             elif return_type_flag:
                 rtype_group.append(i)
             else:

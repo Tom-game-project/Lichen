@@ -12,7 +12,8 @@ import re
 import logging
 
 
-logging.basicConfig()
+# logging.basicConfig(format="%(lineno)s:%(levelname)s:%(message)s",level=logging.DEBUG)
+# logging.disable()
 
 class LichenTester:
     """
@@ -131,6 +132,15 @@ Option<(i32,i32,Vec<&str>),&str>
 """
     lichen.Type_parser()
 
+def test05():
+    # paths = glob.glob("./test_set/*test.lc")
+    paths = [
+        "func_test_set/ex00.test.lc"
+    ]
+    tester = LichenTester(paths)
+    print("test start".center(100,"="))
+    tester.test_all()
+
 if __name__=="__main__":
     args = sys.argv
     if args[1] == "0":
@@ -143,6 +153,8 @@ if __name__=="__main__":
         test03()
     elif args[1] == "4":
         test04()
+    elif args[1] == "5":
+        test05()
     else:
         print("else")
 
