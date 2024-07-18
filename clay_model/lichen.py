@@ -6,6 +6,10 @@ TODO : コメントをかけるようにする
 
 """
 import copy
+import logging
+
+logging.basicConfig(format="%(lineno)s:%(levelname)s:%(message)s", level=logging.DEBUG)
+# logging.disable()
 
 # === Parser ===
 
@@ -297,8 +301,42 @@ class Parser:
             else:
                 rlist.append(i)
         return rlist
+
+    def contain_callable(self,vec:list):
+        """
+        callableな状態があってかつそれが呼ばれようとしているときに、true
+        ```
+        anyfunc()()
+        ^^^^^^^^^
+        '-> this is callable!
+        
+        anyfunc()
+        ^^^^^^^^^
+        '-> this is not callable
+
+        anylist[]()
+        ^^^^^^^^^
+        '-> this is callable!
+        """
+        flag:bool = False
+        name_tmp:Word|Func = None
     
-    def grouping_functioncall(self,vec:list,block,ObjectInstance:"Elem") -> list:
+        for i in vec:
+            if (type(i) is Word) or (type(i) is Func):
+                name_tmp  = i
+                flag = True
+            elif type(i) is ParenBlock:
+                if flag and name_tmp.contents not in self.control_statement:
+                    return True
+            else:
+                if flag:
+                    flag = False
+                    name_tmp = None
+                else:
+                    pass
+        return False
+
+    def grouping_functioncall(self,vec:list) -> list:
         """
         # grouping_call
         ## group function calls
@@ -308,24 +346,28 @@ class Parser:
         TODO:ここでは、returnやbreak,continueが関数として認識されないようにする
         """
         flag:bool = False
-        name_tmp:Word = None
-        rlist:list = list()
+        name_tmp:Word | Func = None
+        rlist:list = []
+        logging.debug(vec)
         for i in vec:
-            if type(i) is Word:
+            if (type(i) is Word) or (type(i) is Func):
                 if flag:
                     rlist.append(name_tmp)
                 name_tmp  = i
                 flag = True
-            elif type(i) is block:
+            elif type(i) is ParenBlock:
                 if flag and name_tmp.contents not in self.control_statement:
                     # return ();みたいなかっこ悪い書き方もできる！
-                    rlist.append(
-                        ObjectInstance(
-                            name_tmp.get_contents(),# func name
+                    obj = Func(
+                            name_tmp,# func name
                             i.get_contents(),       #self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
                             self.depth,
                             self.loopdepth
-                    ))
+                    )
+                    # logging.debug(obj)
+                    rlist.append(
+                        obj
+                        )
                     name_tmp = None
                     flag = False
                 else:
@@ -482,6 +524,79 @@ class Parser:
             rlist = self.grouping_operator_unit(rlist,i)
         return rlist
 
+    def grouping_lambda(self,vec:list) -> list:
+        """
+        # grouping_lambda 
+        この関数は関数内で宣言された関数、
+        Lichenではとりあえず関数ないで宣言できる関数を無名関数のみに絞ることで式指向を実現させる
+        """
+        rlist:list = []
+        args_tmp = None
+        block_tmp = None
+        return_type_tmp = []
+        flag1:bool = False
+        # flag2:bool = False
+
+        logging.debug(vec)
+        for i in vec:
+            if (type(i) is Func) and (type(i.get_name()) is Word) and (i.get_name().get_contents() == "fn"):
+                flag1 = True
+                args_tmp = i.get_contents()
+            elif type(i) is Block:
+                if flag1:
+                    block_tmp = i
+                    rlist.append(
+                        DecLambda(
+                            copy.deepcopy(args_tmp),
+                            copy.deepcopy(return_type_tmp),
+                            block_tmp.get_contents(),
+                            self.depth,
+                            self.loopdepth
+                        )
+                    )
+                    return_type_tmp.clear()
+                    flag1 = False
+                else:
+                    rlist.append(i)
+            elif flag1:
+                return_type_tmp.append(i)
+            else:
+                rlist.append(i)
+        return rlist
+
+        # for i in vec:
+        #     if type(i) is Word and i.get_contents() == "fn":
+        #         flag1 = True
+        #     elif flag1:
+        #         if type(i) is ParenBlock:
+        #             args_tmp = i
+        #             flag1 = False
+        #             flag2 = True
+        #         else:
+        #             raise BaseException("invalid syntax error fn token")
+        #     elif flag2:
+        #         if type(i) is Block:
+        #             block_tmp = i
+        #             rlist.append(
+        #                 DecLambda(
+        #                     args_tmp,
+        #                     copy.deepcopy(return_type_tmp),
+        #                     block_tmp.get_contents(),
+        #                     self.depth,
+        #                     self.loopdepth
+        #                 )
+        #             )
+        #             return_type_tmp.clear()
+        #             flag1,flag2 = False,False
+        #         else:
+        #             # ここでreturn タイプを採取する
+        #             return_type_tmp.append(i)
+        #     else:
+        #         rlist.append(i)
+        # if flag1 or flag2:
+        #     raise BaseException("invalid syntax error fn token")
+        # return rlist
+
     # comma_spliter
     def comma_spliter(self,vec:list) -> list:
         """
@@ -513,7 +628,8 @@ class Parser:
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
-        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+        while self.contain_callable(codelist):
+            codelist = self.grouping_functioncall(codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         
@@ -706,8 +822,10 @@ class Expr_parser(Parser): # 式について解決します
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## if, elif, else, forをまとめる2
         codelist = self.grouping_syntaxbox(codelist)
+        codelist = self.grouping_lambda(codelist)
         ## functionの呼び出しをまとめる
-        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+        while self.contain_callable(codelist):
+            codelist = self.grouping_functioncall(codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる
@@ -715,9 +833,10 @@ class Expr_parser(Parser): # 式について解決します
         ## 演算子を解決する
         codelist = self.resolve_operation(codelist)
         return codelist
-    
+
     def resolve(self) -> list["Elem"]:
         codelist = self.code2vec(self.code)
+        logging.debug(codelist)
         for i in codelist: # 再帰
             i.resolve_self()
         return codelist
@@ -747,7 +866,9 @@ class State_parser(Parser): # 文について解決します
         ## if, elif, else, forをまとめる
         codelist = self.grouping_syntax(codelist, self.syntax_words)
         ## functionの呼び出しをまとめる
-        codelist = self.grouping_functioncall(codelist,ParenBlock,Func)
+
+        while self.contain_callable(codelist):
+            codelist = self.grouping_functioncall(codelist)
         ## listの呼び出しをまとめる
         codelist = self.grouping_list(codelist,[Word,Func,ListBlock,Syntax],ListBlock,List)
         ## 演算子をまとめる
@@ -779,25 +900,31 @@ class State_parser(Parser): # 文について解決します
         # str
         func_name:str = None
         # list
-        func_args:list = list()
-        rtype_group:list = list()
-        rlist:list = list()
+        func_args:list = []
+        rtype_group:list = []
+        rlist:list = []
         for i in vec:
             if type(i) is Word:
-                if i.get_contents() == self.FUNCTION:
-                    flag = True
-                elif return_type_flag:
+                if return_type_flag:
                     rtype_group.append(i)
+                elif i.get_contents() == self.FUNCTION:
+                    flag = True
                 else:
                     rlist.append(i)
-            elif type(i) is Func and flag:
-                func_name = i.get_name()
-                func_args = i.get_contents()
+            elif type(i) is Func:
+                if return_type_flag:
+                    rtype_group.append(i)
+                elif flag:
+                    func_name = i.get_name()
+                    func_args = i.get_contents()
+                else:
+                    rlist.append(i)
             elif flag and  type(i) is Block:
+                logging.debug(f"function name {rtype_group}")
                 rlist.append(DecFunc( 
-                    func_name,              # funcname 
-                    copy.copy(func_args),   # args
-                    copy.copy(rtype_group), # rtype
+                    copy.deepcopy(func_name),              # funcname 
+                    copy.deepcopy(func_args),   # args
+                    copy.deepcopy(rtype_group), # rtype
                     i,                      # contents
                     False,                  #
                     self.depth              # 
@@ -808,6 +935,7 @@ class State_parser(Parser): # 文について解決します
                 func_args.clear()
             elif isinstance(i, str) and i == ":" and flag:
                 return_type_flag = True
+                # rtype_group.append(i)
             elif return_type_flag:
                 rtype_group.append(i)
             else:
@@ -1140,7 +1268,7 @@ class Elem:
         print(f"resolve_self 未実装 {type(self).__name__}")
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) name:({self.name}) contents:({self.contents})>"
 
     def show(self):
         """
@@ -1333,7 +1461,7 @@ class Word(Elem):# Word Elemは仮どめ
         else:
             return "local.get ${}\n".format(self.contents)
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) bool_flag:({self.bool_flag}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) name:({self.name}) bool_flag:({self.bool_flag}) contents:({self.contents})>"
 
 class Syntax(Elem):
     """
@@ -1366,7 +1494,7 @@ class Syntax(Elem):
 
     def __repr__(self):
         # override
-        return f"<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) name:({self.name}) expr:({self.expr}) contents:({self.contents})>"
 
     def get_all_local_value(self):
         rlist:list = list()
@@ -1634,7 +1762,7 @@ class SyntaxBox(Elem):
             all_if_block_has_return = self.__if_unreachable_checker() and self.__if_has_else(self.contents)
             for i in self.contents:                 # contents内の要素はすべて、syntax
                 if all_if_block_has_return:
-                    print(i)
+                    logging.debug(i)
                     wasm_code += i.wat_format_gen("if",return_type = "None") # if elif else
                 else:
                     wasm_code += i.wat_format_gen("if",return_type = "i32")
@@ -1663,7 +1791,7 @@ class Func(Elem):
     get_contents -> (args:[<expr>,...])
     get_name -> (funcname: <name>)
     """
-    def __init__(self, name: str, contents: list, depth:int,loopdepth: int) -> None:
+    def __init__(self, name: "Elem", contents: list, depth:int,loopdepth: int) -> None:
         super().__init__(name, contents, depth, loopdepth)
         # TODO : 引数の型チェックを入れる
         self.wasm_ope_correspondence_table:dict = {
@@ -1896,7 +2024,7 @@ class List(Elem):
         self.index_list = [self.resolve_self_unit(i.get_contents()) for i in self.index_list]
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.expr}) index:({self.index_list})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) expr:({self.expr}) index:({self.index_list})>"
 
 class Operator(Elem):
     """
@@ -1909,7 +2037,7 @@ class Operator(Elem):
         self.ope = ope
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) ope:({self.ope})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) ope:({self.ope})>"
 
 class Data(Elem):
     """
@@ -1927,7 +2055,7 @@ class Data(Elem):
         text:str = ""
         for i in self.data:
             text += repr(i) + ",\n"
-        return f"<{type(self).__name__} depth:({self.depth}) data:({text})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) data:({text})>"
 
 class Arg(Elem):
     """
@@ -2090,7 +2218,7 @@ class DecFunc(Elem):
         self.contents.resolve_self()
 
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} depth:({self.depth}) pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) pubflag({self.pub_flag}) funcname:({self.name}) args:({self.args}) return type:({self.return_type}) contents:({self.contents})>"
 
     def get_all_local_value(self) -> list:
         """
@@ -2106,6 +2234,27 @@ class DecFunc(Elem):
         else:
             print ("Error! : function contetns is not Block")
         return self.contents.get_all_local_value()
+
+class DecLambda(Elem):
+    def __init__(self,args,return_type, contents: str, depth: int, loopdepth: int) -> None:
+        super().__init__(
+            None,
+            contents,
+            depth,
+            loopdepth
+        )
+        self.return_type = return_type
+        self.args = args
+
+    def resolve_self(self):
+        # TODO: resolve args :self.args
+        # TODO: resolve args :self.return_type
+        state_parser = State_parser(self.contents,loopdepth = self.loopdepth,depth = self.depth + 1)
+        self.contents = state_parser.resolve()
+
+    def __repr__(self):
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) args:({self.args}) rtype:({self.return_type}) contents:({self.contents})>"
+    
 
 class DecValue(Elem):
     """
@@ -2142,7 +2291,7 @@ class DecValue(Elem):
             pass
 
     def __repr__(self): # public 関数のときの表示
-        return f"<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) pubflag:({self.pub_flag}) {self.mutable} value_name:({self.name}) value_type({self.type_}) contents:({self.contents})>"
 
     def get_all_local_value(self):
         rlist:list = list()
@@ -2192,7 +2341,7 @@ class Expr(Elem): # Exprは一時的なものである
         self.contents = expr_parser.resolve()
 
     def __repr__(self):
-        return f"<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
+        return f"\n{'    ' * self.depth}<{type(self).__name__} depth:({self.depth}) expr:({self.contents})>"
 
     def get_all_local_value(self):
         rlist:list = list()
