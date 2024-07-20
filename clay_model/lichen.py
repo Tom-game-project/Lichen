@@ -539,6 +539,8 @@ class Parser:
 
         logging.debug(vec)
         for i in vec:
+            #　関数から関数が返却されていて直接callされているようなシチュエーションの時を想定している
+            # TODO 他にも、リストから返却されてた関数ポインタをコールする場合など色々な場合を考慮する必要がある
             if (type(i) is Func) and (type(i.get_name()) is Word) and (i.get_name().get_contents() == "fn"):
                 flag1 = True
                 args_tmp = i.get_contents()
@@ -1153,8 +1155,18 @@ class Type_parser(Parser):
     # Type_parser
     型解析用
     """
-    def __init__(self,code:str) -> None:
+    def __init__(self,code:str,mode = "return") -> None:
         """
+        @param mode {str} return or normal
+
+        ## mode
+
+        ### return mode
+        return mode のときは、返り値すなわち左に`:`がある状態のtype文字列が渡される
+
+        ### normal mode(default)
+        normal mode のときは、<T>におけるTのような一般的な引数の内部についてparseするときに使うmode 
+        ## note
         - lichenが基本で用意する型
           - i32,i64,f32,f64 //プリミティブ型
           - () // tupleタプル(格納可能な要素は限定される)
@@ -1162,6 +1174,7 @@ class Type_parser(Parser):
           - Vec<T> //実体はタプル
           - Mat<T> //実体はタプル
           - List<T> //実体は先頭ポインター
+          - 関数 fn (T,...):T
          
         - 複数値の返却とともに複数値の同時代入も作成する
           ```lc
@@ -1180,7 +1193,6 @@ class Type_parser(Parser):
           - Mat4x...
           a*b
 
-
         """
         # super().__init__(code)
         self.code = code
@@ -1196,19 +1208,23 @@ class Type_parser(Parser):
             "f32",
             "f64"
         ]
-        self.basic_types_vec = "Vec"   # vector
-        self.basic_types_mat = "Mat"   # matrix
-        self.basic_types_list = "List" # list
         self.blocks = [
             ['<','>',TypeBlock],
             ['(',')',TypeTuple],
         ]
 
-    def grouping_functype(self) -> list:
+    def grouping_functype(self,vec:list) -> list:
         """
         # grouping_functype 
+        関数ポインタのタイプに関するparseする
+        基本的な文法は以下のよう
+        ```
+        : fn (T,...) : T
+        ```
         """
-        pass
+        # rlist:list = []
+        for i in vec:
+            pass
 
     def grouping_tupletype(self) -> list:
         """
@@ -1979,8 +1995,8 @@ i32.xor
         else:
             pass
 
-    # def __repr__(self):
-    #     return f"<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
+    def __repr__(self) -> str:
+        return f"\n{'     '*self.depth}<{type(self).__name__} func name:({self.name}) args:({self.contents})>"
 
 class List(Elem):
     """
@@ -2210,6 +2226,7 @@ class DecFunc(Elem):
         # TODO argsのtypeの処理
         """
         #print("args", self.args)
+        # logging.debug("=====logger=======> %s" % str(self.return_type))
         parser = Args_parser(self.args, depth = self.depth + 1)
         self.args = parser.resolve_func_arg()
         #print("args", self.args)

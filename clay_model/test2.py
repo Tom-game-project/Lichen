@@ -13,7 +13,7 @@ import logging
 
 
 # logging.basicConfig(format="%(lineno)s:%(levelname)s:%(message)s",level=logging.DEBUG)
-# logging.disable()
+logging.disable()
 
 class LichenTester:
     """
@@ -135,7 +135,8 @@ Option<(i32,i32,Vec<&str>),&str>
 def test05():
     # paths = glob.glob("./test_set/*test.lc")
     paths = [
-        "func_test_set/ex00.test.lc"
+        # "func_test_set/ex00.test.lc",
+        "func_test_set/ex01.test.lc"
     ]
     tester = LichenTester(paths)
     print("test start".center(100,"="))
