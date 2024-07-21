@@ -358,16 +358,15 @@ class Parser:
             elif type(i) is ParenBlock:
                 if flag and name_tmp.contents not in self.control_statement:
                     # return ();みたいなかっこ悪い書き方もできる！
-                    obj = Func(
+                    # logging.debug(obj)
+                    rlist.append(
+                        Func(
                             name_tmp,# func name
                             i.get_contents(),       #self.comma_spliter(i.get_contents()), # args(list[<expr>,..])
                             self.depth,
                             self.loopdepth
-                    )
-                    # logging.debug(obj)
-                    rlist.append(
-                        obj
                         )
+                    )
                     name_tmp = None
                     flag = False
                 else:
