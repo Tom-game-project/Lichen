@@ -515,7 +515,7 @@ class Parser:
 
     def grouping_operator(self,vec:list,ordered_opelist:list[str]):
         """
-        # grouping_operator2
+        # grouping_operator
         ## 2** -1
         """
         rlist:list = copy.copy(vec)

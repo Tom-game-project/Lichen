@@ -6,14 +6,14 @@ Lichen のテスト用ファイル
 import difflib
 import sys
 import glob
-import lichen
+import src.lichen as lichen
 import re
 
 import logging
 
 
 # logging.basicConfig(format="%(lineno)s:%(levelname)s:%(message)s",level=logging.DEBUG)
-logging.disable()
+#logging.disable()
 
 class LichenTester:
     """
@@ -93,7 +93,7 @@ def test02():
     code4 = """
 fn (a:i32,b:i32):i32 { return a + b; }
 """
-    p = lichen.Expr_parser(code4)
+    p = lichen.Expr_parser(code)
     codelist = p.resolve()
     print("codelist",codelist)
 
