@@ -6,13 +6,14 @@ Lichen のテスト用ファイル
 import difflib
 import sys
 import glob
-import lichen
+import lichen as lichen
 import re
 
 import logging
 
 
-logging.basicConfig()
+# logging.basicConfig(format="%(lineno)s:%(levelname)s:%(message)s",level=logging.DEBUG)
+#logging.disable()
 
 class LichenTester:
     """
@@ -53,6 +54,8 @@ def test00():
         "test_set/ex07.test.lc",
         "test_set/ex08.test.lc",
         "test_set/ex09.test.lc",
+        "test_set/ex10.test.lc",
+        "test_set/ex11.test.lc",
     ]
     tester = LichenTester(paths)
     print("test start".center(100,"="))
@@ -79,53 +82,65 @@ def test01():
 
 def test02():
     code="""
-        tarai(tarai(x - 1, y, z), tarai(y - 1, z, x), tarai(z - 1, x, y));
+        let a = (1 + x) * 2;
     """
     code2="""
-func0(a,b),func1(b,a),func2(aaa)
-"""
+        tarai(1)(2)(3)
+    """
     code3="""
-    a[i + 1][1][2]
+    a[1][1][2]
 """
-    p = lichen.State_parser(code3)
-    codelist = p.resolve()
-    print(codelist)
-
-def test03():
-    code0 = """
-fn main(a:Vec<i32>,b:Vec<i32>,c:i32,d:fn(i32):i32, e: fn(Vec<i32>):i32 ):Vec<i32>
-{
-}
+    code4 = """
+fn (a:i32,b:i32):i32 { return a + b; }
 """
-    p = lichen.State_parser(code0)
+    p = lichen.Expr_parser(code)
     codelist = p.resolve()
     print("codelist",codelist)
 
-def test04(): # TODO 後でテスト
-    """
-    # test03 
-    否定反転メソッドのテスト
-
-    """
+def test03():
     code0 = """
-!a
+fn main(
+    a:Vec<i32>,
+    b:Vec<i32>,
+    c:i32,
+    d:fn(i32):i32,
+    e: fn(Vec<i32>):i32 ):Vec<i32>
+{
+}
 """
     code1 = """
-!(a && b)
+fn main(
+    a:Vec<i32>,
+    b:Vec<i32>,
+    d:fn(i32):i32,
+    e: fn(Vec<i32>):i32,
+    f:Option<Vec<i32>,str>,
+    c:i32
+    ):Vec<i32>
+{
+}
 """
-    code2 = """
-a && b
-"""
-    code3 = """
-!(0 <= a && a <= 10 || flag)
-"""
-    p = lichen.Expr_parser(code3)
+    p = lichen.State_parser(code1)
     codelist = p.resolve()
-    print("input",code3)
-    print(codelist)
-    codelist[0].negative_inversion()
-    print(codelist)
+    print("codelist",codelist)
 
+
+# タイプパーサのテスト
+def test04(): 
+    code00 = """
+Option<(i32,i32,Vec<&str>),&str>
+"""
+    lichen.Type_parser()
+
+def test05():
+    # paths = glob.glob("./test_set/*test.lc")
+    paths = [
+        # "func_test_set/ex00.test.lc",
+        "func_test_set/ex01.test.lc"
+    ]
+    tester = LichenTester(paths)
+    print("test start".center(100,"="))
+    tester.test_all()
 
 if __name__=="__main__":
     args = sys.argv
@@ -139,6 +154,8 @@ if __name__=="__main__":
         test03()
     elif args[1] == "4":
         test04()
+    elif args[1] == "5":
+        test05()
     else:
         print("else")
 
