@@ -1,4 +1,4 @@
-import lichen
+import src.lichen as lichen
 
 import difflib
 from pprint import pprint

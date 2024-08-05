@@ -1,0 +1,22 @@
+
+fn f2_0(x:i32,y:i32,z:i32):i32{
+    return y;
+}
+
+fn f2_1(x:i32,y:i32,z:i32):i32{
+    return tarai2(
+        tarai2 (x - 1, y, z),
+        tarai2 (y - 1, z, x),
+        tarai2 (z - 1, x, y)
+    );
+}
+
+fn f1(x:i32,y:i32):funcref{
+    if (x <= y){
+        return f2_0;
+    }
+    else
+    {
+        return f2_1;
+    }
+}
