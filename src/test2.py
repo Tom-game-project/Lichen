@@ -6,7 +6,7 @@ Lichen のテスト用ファイル
 import difflib
 import sys
 import glob
-import src.lichen as lichen
+import lichen as lichen
 import re
 
 import logging
