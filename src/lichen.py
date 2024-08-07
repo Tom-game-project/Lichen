@@ -483,33 +483,31 @@ class Parser:
         ope_size = len(ope)
         for i in vec:
             if not isinstance(i,Elem):
+                # 未解決の場合
                 group.append(i)
                 ope_tmp = ''.join(group)
                 if len(group) < ope_size:
-                    pass
+                    continue
                 elif ope_size == len(group):
                     if ope_tmp == ope:
                         rlist.append(Operator(ope,self.depth))
                     else:
                         rlist += group
-                    group.clear()
-                else:# ope_size < len(group)
-                    rlist += group
-                    group.clear()
+                else: # ope_size < len(group)
+                    rlist += group    
+                group.clear()
             else:
                 ope_tmp = ''.join(group)
                 if len(group) < ope_size:
                     rlist += group
-                    group.clear()
                 elif ope_size == len(group):
                     if ope_tmp == ope:
                         rlist.append(Operator(ope,self.depth))
                     else:
                         rlist += group
-                    group.clear()
                 else:# ope_size < len(group)
                     rlist += group
-                    group.clear()
+                group.clear()
                 rlist.append(i)
         return rlist
 
